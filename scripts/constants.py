@@ -4,9 +4,3 @@ class State:
     HOME = 0
     LOGIN = 1
     FEED = 2
-
-# Menu is a dictionary of lists
-# The keys are the states
-menu = {
-    State.HOME: ['Login', 'Contact David', 'Exit'],
-}
