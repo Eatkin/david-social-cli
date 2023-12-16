@@ -21,9 +21,15 @@ while True:
         homepage_markdown = Markdown(homepage_content)
 
         console.print(homepage_markdown)
-    elif state == State.LOGIN:
-        # Get the username and password
-        username, password = tu.get_secrets()
+        console.print("-" * 80, end="\n\r")
+    elif state == State.LOGGED_IN:
+        # We've just logged in so display the ticker and ask user for input
+        # Get the ticker
+        ticker = cu.get_david_ticker()
+        console.print("-" * 80, end="\n\r")
+        console.print("Welcome to David Social!", end="\n\r")
+        console.print("Ticker: " + ticker, end="\n\r")
+        console.print("-" * 80, end="\n\r")
 
     # Display our menu options
     menu_options = mu.menu[state]
@@ -41,4 +47,12 @@ while True:
     # Perform the relevant action
     menu_index = valid_inputs.index(user_input)
     # Execute the command in menu_functions
-    mu.menu_functions[state][menu_index]()
+    function = mu.menu_functions[state][menu_index]
+    success = function()
+
+    # Change state if required
+    if function == mu.login_wrapper:
+        if success:
+            state = State.LOGGED_IN
+        else:
+            state = State.HOME

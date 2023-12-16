@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from html2text import html2text
 from scripts.console import console
+from scripts.toml_utils import get_secrets
 
 def init_webdriver():
     """Initialize the webdriver"""
@@ -33,6 +34,18 @@ def get_david_homepage():
     soup = soup.find("div", {"id": "welcomepage"})
     return soup
 
+def get_david_ticker():
+    """Gets the ticker at the top of the feed"""
+    # Should be on the feed page now so we'll wait for post elements to load
+    wait = WebDriverWait(driver, 10)
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "post")))
+
+    # Now they've loaded we can get the ticker content
+    # The ticker is in a marquee element
+    ticker = driver.find_element(By.CLASS_NAME, "marquee").text
+    return ticker
+
+
 def parse_soup(soup):
     """Just returns the soup without tags as formatted by html2text"""
     # Loop through all the tags and convert them to text
@@ -45,11 +58,13 @@ def parse_soup(soup):
 
     return output
 
-def login(username, password):
+def login(output=True):
     """Login to David Social"""
     url = "https://www.davidsocial.com/"
 
     driver.get(url)
+
+    username, password = get_secrets()
 
     # Wait for content to load
     wait = WebDriverWait(driver, 10)
@@ -75,12 +90,15 @@ def login(username, password):
     # So wait to see if we're redirected, if not then we know we've failed
     try:
         # Logging in pops up an alert
+        # Very good design thank you again David
         alert = wait.until(EC.alert_is_present())
         alert.accept()
-        console.print("Login success!")
+        if output:
+            console.print("Login success!")
         return True
     except:
-        console.print("Incorrect username or password")
+        if output:
+            console.print("Incorrect username or password")
         return False
 
 

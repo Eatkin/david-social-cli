@@ -1,6 +1,5 @@
 from scripts.constants import State
 from scripts.console import console
-import scripts.toml_utils as tu
 from scripts.chromium_utils import login
 
 
@@ -13,18 +12,21 @@ def quit():
 def contact_david():
     console.print("David may be contacted if you wish to join David Social or if you have forgotten your password", end="\n\r")
     console.print("You'll have to ask David for his email though")
+    return True
 
 def login_wrapper():
-    username, password = tu.get_secrets()
-    success = login(username, password)
+    success = login()
+    return success
 
 
 # Menu is a dictionary of lists
 # The keys are the states
 menu = {
     State.HOME: ['Login', 'Contact David', 'Exit'],
+    State.LOGGED_IN: ['Update ticker', 'Make a post', 'Feed', 'Profile', 'Search', 'Read news', 'Notifications', 'Exit']
 }
 
 menu_functions = {
-    State.HOME: [login_wrapper, contact_david, quit]
+    State.HOME: [login_wrapper, contact_david, quit],
+    State.LOGGED_IN: [quit, quit, quit, quit, quit, quit, quit, quit]
 }
