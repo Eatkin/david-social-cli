@@ -2,17 +2,46 @@ import scripts.toml_utils as tu
 import scripts.chromium_utils as cu
 from rich.console import Console
 from rich.markdown import Markdown
+from scripts.constants import State
+from scripts.constants import menu
+
+# Set up state
+state = State.HOME
 
 # Initialise the console
 console = Console()
 
-# Get the username and password
-username, password = tu.get_secrets()
+# Initialise webdriver
 driver = cu.init_webdriver()
-# Get the homepage
-homepage_soup = cu.get_david_homepage(driver)
-homepage_content = cu.parse_soup(homepage_soup)
 
-# Homepage is in markdown format so parse it with rich
-homepage_markdown = Markdown(homepage_content)
-console.print(homepage_markdown)
+
+console.print("Loading David Social...", end="\n\r")
+
+# Main loop
+while True:
+    if state == State.HOME:
+        # Get the homepage
+        homepage_soup = cu.get_david_homepage(driver)
+        homepage_content = cu.parse_soup(homepage_soup)
+
+        # Homepage is in markdown format so parse it with rich
+        homepage_markdown = Markdown(homepage_content)
+
+        console.print(homepage_markdown)
+    elif state == State.LOGIN:
+        # Get the username and password
+        username, password = tu.get_secrets()
+
+    # Display our menu options
+    menu_options = menu[state]
+
+    # Print out menu options
+    for option in menu_options:
+        console.print(f"({option[0]}){option[1:]}", end="\n\r")
+
+    # Get the user's input
+    user_input = console.input("Please select an option: ",)
+
+    break
+
+    # Check if the user input is valid
