@@ -45,6 +45,21 @@ def get_david_ticker():
     ticker = driver.find_element(By.CLASS_NAME, "marquee").text
     return ticker
 
+def post_to_david_social():
+    """Submit a post!"""
+    input = console.input("Write stuff to your friends here :3 ")
+    # Find the elements with id posting-box
+    posting_box = driver.find_element(By.ID, "posting-box")
+
+    # Set the content of the textarea
+    posting_box.send_keys(input)
+
+    # Find the button (its the second one, very good design David including no ids thank you)
+    submit_button = driver.find_elements(By.TAG_NAME, "button")[1]
+
+    # Press button
+    submit_button.click()
+
 
 def parse_soup(soup):
     """Just returns the soup without tags as formatted by html2text"""
@@ -98,7 +113,7 @@ def login(output=True):
         return True
     except:
         if output:
-            console.print("Incorrect username or password")
+            console.print("Incorrect username or password, please review your secrets.toml file.")
         return False
 
 

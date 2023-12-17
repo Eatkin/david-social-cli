@@ -22,7 +22,6 @@ def parse_secrets(secrets):
     except:
         print('secrets.toml file is not formatted correctly. Please fix and run again.')
         write_secrets()
-        exit()
 
 def get_secrets():
     """Main function to get the secrets from the secrets.toml file"""
@@ -33,6 +32,5 @@ def get_secrets():
 
         return parse_secrets(secrets)
     except:
-        print('No secrets.toml file found. One has been created, please fill it out and run again.')
+        print('No secrets.toml file found. One has been created, please fill it out to login.')
         write_secrets()
-        exit()
