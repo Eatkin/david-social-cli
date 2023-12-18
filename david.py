@@ -1,14 +1,12 @@
 import datetime
-import requests
-from io import BytesIO
 import scripts.toml_utils as tu
 import scripts.chromium_utils as cu
 import scripts.menu_utils as mu
 import scripts.api_routes as david_api
+import scripts.string_utils as su
 from rich.markdown import Markdown
 from scripts.constants import State
 from scripts.console import console
-from PIL import Image
 
 # Set up global variables
 ticker = None
@@ -73,15 +71,16 @@ while True:
             likes = ", ".join(likes)
             console.print(f"Liked by: {likes}", end="\n\r")
 
-        # If there is an image attached we can display it
-        # This opens a new window so it's not ideal
-        # Will add this as a menu option instead
-        # image_url = post['attached_image']
-        # if image_url != "":
-        #     response = requests.get(image_url)
-        #     if response.status_code == 200:
-        #         image = Image.open(BytesIO(response.content))
-        #         image.show()
+            # If there is an image attached convert to ascii and display it
+            image_url = post['attached_image']
+            if image_url != "":
+                ascii_image = su.image_to_ascii(image_url)
+                if ascii_image is not None:
+                    console.print("-" * 80, end="\n\r")
+                    console.print("Attached image:", end="\n\r")
+                    # Use the default print because markdown doesn't work with ascii and it fucks the console print command up
+                    print(ascii_image)
+
 
 
     # Display our menu options
