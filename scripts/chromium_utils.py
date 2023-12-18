@@ -54,6 +54,10 @@ def post_to_david_social():
     # Find the elements with id posting-box
     posting_box = driver.find_element(By.ID, "posting-box")
 
+    # Set the inner html of the textarea to an empty string
+    # (Otherwise it includes Write stuff to your friends here :3)
+    posting_box.clear()
+
     # Set the content of the textarea
     posting_box.send_keys(input)
 
