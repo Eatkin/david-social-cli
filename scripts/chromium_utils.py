@@ -7,8 +7,7 @@ from bs4 import BeautifulSoup
 from html2text import html2text
 from scripts.console import console
 from scripts.toml_utils import get_secrets
-
-# TODO: Change this into a class object
+import scripts.api_routes as david_api
 
 
 def init_webdriver():
@@ -44,9 +43,53 @@ def get_david_ticker():
     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "post")))
 
     # Now they've loaded we can get the ticker content
-    # The ticker is in a marquee element
-    ticker = driver.find_element(By.CLASS_NAME, "marquee").text
+    # Get all ticker elements
+    tickers = driver.find_elements(By.CLASS_NAME, "marquee")
+    # David usefully reuses the marquee class for other things so grab the last one
+    # And hope for the best lol
+    ticker = tickers[-1].text
     return ticker
+
+def update_david_ticker():
+    """Heads to the update ticker page and submits an update"""
+    # Click on the anchor tag with content "update ticker or submit cat petting pics"
+    update_ticker_anchor = driver.find_element(By.LINK_TEXT, "update ticker or submit cat petting pics")
+    # Click
+    update_ticker_anchor.click()
+
+    # Wait for the textarea to load
+    wait = WebDriverWait(driver, 10)
+    wait.until(EC.presence_of_element_located((By.TAG_NAME, "textarea")))
+
+    # Find the textarea
+    textarea = driver.find_element(By.TAG_NAME, "textarea")
+    # Find the submit button
+    submit_button = driver.find_element(By.TAG_NAME, "button")
+
+    input = console.input("Update the David Social ticker here :3 ")
+
+    # Send the input to the textarea
+    textarea.send_keys(input)
+
+    # Click the submit button
+    submit_button.click()
+
+    # Wait for the alert to pop up
+    alert = wait.until(EC.alert_is_present())
+    # Accept the alert
+    alert.accept()
+
+    console.print("Ticker updated!")
+
+    # Now go back to the feed
+    # Find the anchor tag that contains the text "Feed"
+    feed_anchor = driver.find_element(By.PARTIAL_LINK_TEXT, "Feed")
+    feed_anchor.click()
+
+    # Wait for the feed to load
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "post")))
+
+
 
 def post_to_david_social():
     """Submit a post!"""

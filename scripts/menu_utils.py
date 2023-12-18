@@ -1,6 +1,6 @@
 from scripts.constants import State
 from scripts.console import console
-from scripts.chromium_utils import login, post_to_david_social
+from scripts.chromium_utils import login, post_to_david_social, update_david_ticker
 
 
 # Menu states and functions
@@ -22,6 +22,10 @@ def post_wrapper():
     post_to_david_social()
     return True
 
+def update_ticker_wrapper():
+    update_david_ticker()
+    return True
+
 
 # Menu is a dictionary of lists
 # The keys are the states
@@ -32,5 +36,5 @@ menu = {
 
 menu_functions = {
     State.HOME: [login_wrapper, contact_david, quit],
-    State.LOGGED_IN: [quit, post_wrapper, quit, quit, quit, quit, quit, quit]
+    State.LOGGED_IN: [update_ticker_wrapper, post_wrapper, quit, quit, quit, quit, quit, quit]
 }

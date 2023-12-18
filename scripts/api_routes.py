@@ -40,7 +40,7 @@ def validate_routes():
     all_routes_missing = True
     routes_missing = []
     for route in get_routes:
-        if get_routes[route] is None:
+        if get_routes[route] == "" or get_routes[route] is None:
             print(f"Error: {route} is not set in environment variables")
             routes_missing.append(route)
         else:
@@ -52,5 +52,7 @@ def validate_routes():
     elif len(routes_missing) > 0:
         print(f"Missing routes: {routes_missing}")
         print("Functionality will be limited")
+    else:
+        print("All routes set! :3")
 
     return routes_missing
