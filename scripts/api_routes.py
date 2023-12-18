@@ -1,6 +1,8 @@
 import os
 import requests
+import json
 from scripts.console import console
+
 
 # Define routes for the API
 # Uses environment variables to hide the routes
@@ -38,25 +40,27 @@ route_params = {
     "avi-url": ["id"],
 }
 
-def validate_routes():
+def validate_routes(quiet=False):
     # Loop over the get routes to check if they are set
     all_routes_missing = True
     routes_missing = []
     for route in get_routes:
         if get_routes[route] == "" or get_routes[route] is None:
-            print(f"Error: {route} is not set in environment variables")
+            if not quiet:
+                print(f"Error: {route} is not set in environment variables")
             routes_missing.append(route)
         else:
             all_routes_missing = False
 
-    if all_routes_missing:
-        print("Error: no routes set in environment variables")
-        print("Please contact David for API routes")
-    elif len(routes_missing) > 0:
-        print(f"Missing routes: {routes_missing}")
-        print("Functionality will be limited")
-    else:
-        print("All routes set! :3")
+    if not quiet:
+        if all_routes_missing:
+            print("Error: no routes set in environment variables")
+            print("Please contact David for API routes")
+        elif len(routes_missing) > 0:
+            print(f"Missing routes: {routes_missing}")
+            print("Functionality will be limited")
+        else:
+            print("All routes set! :3")
 
     return routes_missing
 
@@ -74,9 +78,14 @@ def get_api_response(route, params):
     response = requests.get(get_routes[route], params=params)
 
     if response.status_code == 200:
-        return response.json()
+        json_data = response.json()
+        try:
+            return json.loads(json_data)
+        except:
+            return json_data
     else:
         console.print(f"Error: {response.status_code} {response.reason}")
         return None
 
-missing_routes = validate_routes()
+
+missing_routes = validate_routes(quiet=True)

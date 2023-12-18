@@ -26,15 +26,21 @@ def update_ticker_wrapper():
     update_david_ticker()
     return True
 
+# These are just placeholders, but they can be used for logic in the main david.py file
+def view_feed():
+    return True
+
 
 # Menu is a dictionary of lists
 # The keys are the states
 menu = {
     State.HOME: ['Login', 'Contact David', 'Exit'],
-    State.LOGGED_IN: ['Update ticker', 'Make a post', 'Feed', 'Profile', 'Search', 'Read news', 'Notifications', 'Exit']
+    State.LOGGED_IN: ['Update ticker', 'Make a post', 'Feed', 'Profile', 'Search', 'Read news', 'Notifications', 'Exit'],
+    State.BOOTLICKER_FEED: ['Next post', 'Previous post', 'View attached image', 'Exit']
 }
 
 menu_functions = {
     State.HOME: [login_wrapper, contact_david, quit],
-    State.LOGGED_IN: [update_ticker_wrapper, post_wrapper, quit, quit, quit, quit, quit, quit]
+    State.LOGGED_IN: [update_ticker_wrapper, post_wrapper, view_feed, quit, quit, quit, quit, quit],
+    State.BOOTLICKER_FEED: [quit, quit, quit, quit]
 }

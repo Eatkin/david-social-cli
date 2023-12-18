@@ -1,3 +1,6 @@
+import datetime
+import requests
+from io import BytesIO
 import scripts.toml_utils as tu
 import scripts.chromium_utils as cu
 import scripts.menu_utils as mu
@@ -5,10 +8,12 @@ import scripts.api_routes as david_api
 from rich.markdown import Markdown
 from scripts.constants import State
 from scripts.console import console
+from PIL import Image
 
 # Set up global variables
 ticker = None
 feed = None
+feed_index = 0
 
 # Set up state
 state = State.HOME
@@ -38,7 +43,6 @@ while True:
     elif state == State.LOGGED_IN:
         # We've just logged in so display the ticker and ask user for input
         # Get the ticker (once)
-        # TODO: if we update the ticker we need to update this
         if ticker is None:
             ticker = cu.get_david_ticker()
         console.print("-" * 80, end="\n\r")
@@ -48,7 +52,37 @@ while True:
 
         # We can use API routes to get the feed and things
         if feed is None:
-            feed = david_api.get_bootlicker_feed(username)
+            feed = david_api.get_api_response("bootlicker_feed", [username])
+    elif state == State.BOOTLICKER_FEED:
+        if feed is None:
+            console.print("Failed to get feed", end="\n\r")
+        for post in feed:
+            # Format the timestamp
+            timestamp = post['timestamp']
+            timestamp = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+            date_time = timestamp.strftime("%d/%m/%Y %H:%M:%S")
+
+            # Display the post
+            console.print("-" * 80, end="\n\r")
+            console.print(f"{post['username']} at {date_time}", end="\n\r")
+            console.print(post['content'], end="\n\r")
+            console.print("-" * 80, end="\n\r")
+
+            # Display any likes (can use the get-likes route but this works too)
+            likes = post['liked_by']
+            likes = ", ".join(likes)
+            console.print(f"Liked by: {likes}", end="\n\r")
+
+        # If there is an image attached we can display it
+        # This opens a new window so it's not ideal
+        # Will add this as a menu option instead
+        # image_url = post['attached_image']
+        # if image_url != "":
+        #     response = requests.get(image_url)
+        #     if response.status_code == 200:
+        #         image = Image.open(BytesIO(response.content))
+        #         image.show()
+
 
     # Display our menu options
     menu_options = mu.menu[state]
@@ -79,3 +113,7 @@ while True:
         # Set ticker to none because we've updated it
         if success:
             ticker = None
+    elif function == mu.view_feed:
+        if success:
+            state = State.BOOTLICKER_FEED
+            feed_index = 0
