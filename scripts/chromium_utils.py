@@ -8,6 +8,9 @@ from html2text import html2text
 from scripts.console import console
 from scripts.toml_utils import get_secrets
 
+# TODO: Change this into a class object
+
+
 def init_webdriver():
     """Initialize the webdriver"""
     # Setup the browser as headless

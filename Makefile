@@ -1,6 +1,7 @@
 all:
 	make setup
 	make install
+	make env
 
 setup:
 	curl https://pyenv.run | bash | true
@@ -11,3 +12,7 @@ setup:
 install:
 	pip install --upgrade pip
 	pip install -r requirements.txt
+
+env:
+	touch .envrc
+	direnv allow
