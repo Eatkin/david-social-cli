@@ -20,6 +20,7 @@ def image_to_ascii(image, url=True):
     max_width = 120
     max_height = 48
     image, new_width, new_height = resize_image(image, max_width, max_height)
+
     # Convert to greyscale
     image = image.convert('L')
     # Convert to ascii chars
@@ -54,13 +55,15 @@ def resize_image(img, max_width, max_height):
     width, height = img.size
     aspect_ratio = height/width
     new_width = max_width
-    # Why is it multiplied by 0.55? I don't know, and I definitely didn't just copy this from some random website
-    new_height = int(0.55 * aspect_ratio * new_width)
+    # Font is taller than it is wide so we need to reduce the height by a factor
+    # This is good enough based on trying to resize the David Social logo
+    reduction_factor = 0.475
+    new_height = int(reduction_factor * aspect_ratio * new_width)
 
     # Check if the new height is too tall
     if new_height > max_height:
         new_height = max_height
-        new_width = int(new_height/(0.55 * aspect_ratio))
+        new_width = int(new_height/(reduction_factor * aspect_ratio))
 
     img = img.resize((new_width, new_height))
     return img, new_width, new_height
