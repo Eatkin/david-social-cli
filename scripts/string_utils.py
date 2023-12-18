@@ -3,16 +3,20 @@ from PIL import Image
 from io import BytesIO
 
 # Define the ascii characters to use for the image
-ascii_chars = list("$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'.")
-# Alt, smaller gradient
+# ascii_chars = list("$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'.")
+# Alt, smaller gradient (looks better imo)
 ascii_chars = list(" .:-=+*#%@")[::-1]
 
-def image_to_ascii(image_url):
+def image_to_ascii(image, url=True):
     """Definitely not plaigarised from https://www.askpython.com/python/examples/turn-images-to-ascii-art-using-python"""
-    image = get_image(image_url)
+    if url:
+        image = get_image(image)
+    else:
+        image = Image.open(image)
+        image = image.convert("RGBA")
     if image is None:
         return None
-    # resize the image
+    # Resize the image
     max_width = 120
     max_height = 48
     image, new_width, new_height = resize_image(image, max_width, max_height)
@@ -37,6 +41,8 @@ def get_image(image_url):
     response = requests.get(image_url)
     if response.status_code == 200:
         img = Image.open(BytesIO(response.content))
+        # Convert otherwise it yells at me for some reason
+        # This is a public repo why am I writing things like this
         img = img.convert("RGBA")
         return img
     else:
@@ -44,7 +50,7 @@ def get_image(image_url):
 
 def resize_image(img, max_width, max_height):
     """Resize an image to a max width"""
-    # Code I found online to resize the image lol
+    # Code I definitely didn't find online to resize the image lol
     width, height = img.size
     aspect_ratio = height/width
     new_width = max_width

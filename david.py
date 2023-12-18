@@ -1,4 +1,5 @@
 import datetime
+import os
 import scripts.toml_utils as tu
 import scripts.chromium_utils as cu
 import scripts.menu_utils as mu
@@ -15,6 +16,11 @@ feed_index = 0
 
 # Set up state
 state = State.HOME
+
+# Print out this very cool David Social logo
+david_logo = os.path.join(os.path.dirname(__file__), "assets/david.png")
+david_ascii = su.image_to_ascii(david_logo, url=False)
+console.print(david_ascii, end="\n\r")
 
 # Check the API routes
 console.print("Checking API routes...", end="\n\r")
