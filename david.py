@@ -1,12 +1,20 @@
 import scripts.toml_utils as tu
 import scripts.chromium_utils as cu
 import scripts.menu_utils as mu
+import scripts.api_routes as david_api
 from rich.markdown import Markdown
 from scripts.constants import State
 from scripts.console import console
 
+# Set up global variables
+ticker = None
+
 # Set up state
 state = State.HOME
+
+# Check the API routes
+console.print("Checking API routes...", end="\n\r")
+missing_routes = david_api.validate_routes()
 
 console.print("Loading David Social...", end="\n\r")
 
@@ -24,8 +32,9 @@ while True:
         console.print("-" * 80, end="\n\r")
     elif state == State.LOGGED_IN:
         # We've just logged in so display the ticker and ask user for input
-        # Get the ticker
-        ticker = cu.get_david_ticker()
+        # Get the ticker (once)
+        if ticker is None:
+            ticker = cu.get_david_ticker()
         console.print("-" * 80, end="\n\r")
         console.print("Welcome to David Social!", end="\n\r")
         console.print("Ticker: " + ticker, end="\n\r")
