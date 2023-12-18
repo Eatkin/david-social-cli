@@ -9,6 +9,10 @@ from scripts.console import console
 from scripts.toml_utils import get_secrets
 import scripts.api_routes as david_api
 
+"""Utility functions for Chromium webdriver
+Note that authentication fails if you try go directly to URLs
+So navigation MUST be done via clicking on links else the app will break
+"""
 
 def init_webdriver():
     """Initialize the webdriver"""

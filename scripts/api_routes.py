@@ -1,4 +1,6 @@
 import os
+import requests
+from scripts.console import console
 
 # Define routes for the API
 # Uses environment variables to hide the routes
@@ -19,6 +21,7 @@ get_routes = {
 }
 
 # Lookup table for the parameters of each route
+# (Mostly just for my own reference)
 route_params = {
     "profile": ["username"],
     "check_already_liked": ["postId"],
@@ -56,3 +59,24 @@ def validate_routes():
         print("All routes set! :3")
 
     return routes_missing
+
+def get_api_response(route, params):
+    if route in missing_routes:
+        console.print(f"Error: {route} is not set in environment variables")
+        return None
+    if route not in get_routes:
+        console.print(f"Error: {route} is not a valid route")
+        return None
+
+    params = {p_name: p for p_name, p in zip(route_params[route], params)}
+
+    # Make the request
+    response = requests.get(get_routes[route], params=params)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        console.print(f"Error: {response.status_code} {response.reason}")
+        return None
+
+missing_routes = validate_routes()

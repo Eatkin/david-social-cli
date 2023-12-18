@@ -8,6 +8,7 @@ from scripts.console import console
 
 # Set up global variables
 ticker = None
+feed = None
 
 # Set up state
 state = State.HOME
@@ -17,6 +18,10 @@ console.print("Checking API routes...", end="\n\r")
 missing_routes = david_api.validate_routes()
 
 console.print("Loading David Social...", end="\n\r")
+
+# Get our username
+username, _ = tu.get_secrets()
+del _
 
 # Main loop
 while True:
@@ -33,12 +38,17 @@ while True:
     elif state == State.LOGGED_IN:
         # We've just logged in so display the ticker and ask user for input
         # Get the ticker (once)
+        # TODO: if we update the ticker we need to update this
         if ticker is None:
             ticker = cu.get_david_ticker()
         console.print("-" * 80, end="\n\r")
         console.print("Welcome to David Social!", end="\n\r")
         console.print("Ticker: " + ticker, end="\n\r")
         console.print("-" * 80, end="\n\r")
+
+        # We can use API routes to get the feed and things
+        if feed is None:
+            feed = david_api.get_bootlicker_feed(username)
 
     # Display our menu options
     menu_options = mu.menu[state]
@@ -65,3 +75,7 @@ while True:
             state = State.LOGGED_IN
         else:
             state = State.HOME
+    elif function == mu.update_ticker_wrapper:
+        # Set ticker to none because we've updated it
+        if success:
+            ticker = None
