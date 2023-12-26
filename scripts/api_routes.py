@@ -27,7 +27,7 @@ get_routes = {
 route_params = {
     "profile": ["username"],
     "check_already_liked": ["postId"],
-    "get_cat_pets": ["postId"],
+    "get_cat_pets": [],
     "user_posts": ["username"],
     "replies": ["postId"],
     "post_data": ["id"],

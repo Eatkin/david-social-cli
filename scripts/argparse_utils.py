@@ -9,11 +9,12 @@ def argparse_init():
     -p --post - Make a post (requires string)
     -ut --update-ticker - Update the ticker"""
     args = argparse.ArgumentParser()
-    args.add_argument("-f", "--feed", type=int, help="Get a number of posts from the feed e.g. -f 10")
+    args.add_argument("-f", "--feed", type=int, help="Get a number of posts from your Bootlicker feed e.g. -f 10")
     args.add_argument("-gf", "--global-feed", type=int, help="Get a number of posts from the global feed e.g. -gf 10")
     args.add_argument("-t", "--ticker", action="store_true", help="Get the ticker e.g. -t", default=None)
     args.add_argument("-p", "--post", type=str, help="Make a post e.g. -p \"Hello friends :3\"", default=None)
     args.add_argument("-ut", "--update-ticker", type=str, help="Update the ticker e.g. -ut \"Hello everyone on David Social :3\"", default=None)
+    args.add_argument("-cp", "--catpets", action="store_true", help="Get the number of cat pets, e.g. -cp", default=None)
     return args
 
 def validate_arguments(args):

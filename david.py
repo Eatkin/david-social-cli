@@ -52,13 +52,19 @@ success = cu.login()
 if not success:
     exit(1)
 
+console.print("-" * 80, end="\n\r")
+
 # We've logged in so we can get the ticker (if necessary)
 if args.ticker:
     ticker = cu.get_david_ticker()
 
-    console.print("-" * 80, end="\n\r")
     console.print("Welcome to David Social!", end="\n\r")
     console.print("Ticker: " + ticker, end="\n\r")
+    console.print("-" * 80, end="\n\r")
+
+if args.catpets:
+    catpets = david_api.get_api_response("get_cat_pets")
+    console.print(f"The cat has been pet {catpets['pets']} times", end="\n\r")
     console.print("-" * 80, end="\n\r")
 
 if args.update_ticker:
@@ -86,11 +92,9 @@ if args.global_feed:
 
 
 """TODO:
-- Add a way to get the global feed (can use API route)
-- Sequentially work through the arguments
-- E.g. we can make a post, get the ticker, update the ticker, then get the feed
-- It should print output as it goes along"""
-
+Cleanup the code below and remove anything redundant
+Also cleanup the code above lol
+"""
 # # Set up global variables
 # ticker = None
 # feed = None
