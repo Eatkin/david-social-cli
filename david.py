@@ -5,9 +5,30 @@ import scripts.chromium_utils as cu
 import scripts.menu_utils as mu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
+import scripts.argparse_utils as au
 from rich.markdown import Markdown
 from scripts.constants import State
 from scripts.console import console
+
+# Print out this very cool David Social logo
+david_logo = os.path.join(os.path.dirname(__file__), "assets/david.png")
+david_ascii = su.image_to_ascii(david_logo, url=False)
+
+# Initialize argparse
+args = au.argparse_init()
+# Validate the arguments
+if not au.validate_arguments(args):
+    print("Failed to validate arguments")
+    args.print_help()
+    exit(1)
+# Get the arguments
+args = au.get_arguments(args)
+
+"""TODO:
+- Add a way to get the global feed (can use API route)
+- Sequentially work through the arguments
+- E.g. we can make a post, get the ticker, update the ticker, then get the feed
+- It should print output as it goes along"""
 
 # Set up global variables
 ticker = None
@@ -17,9 +38,6 @@ feed_index = 0
 # Set up state
 state = State.HOME
 
-# Print out this very cool David Social logo
-david_logo = os.path.join(os.path.dirname(__file__), "assets/david.png")
-david_ascii = su.image_to_ascii(david_logo, url=False)
 console.print(david_ascii, end="\n\r")
 
 # Check the API routes
