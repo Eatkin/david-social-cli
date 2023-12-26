@@ -70,14 +70,16 @@ if args.catpets:
 if args.update_ticker:
     if args.update_ticker == "":
         console.print("Error: ticker cannot be empty", end="\n\r")
-    cu.update_david_ticker(args.update_ticker)
-    console.print("-" * 80, end="\n\r")
+    else:
+        cu.update_david_ticker(args.update_ticker)
+        console.print("-" * 80, end="\n\r")
 
 if args.post:
     if args.post == "":
         console.print("Error: post cannot be empty", end="\n\r")
-    cu.post_to_david_social(args.post)
-    console.print("-" * 80, end="\n\r")
+    else:
+        cu.post_to_david_social(args.post)
+        console.print("-" * 80, end="\n\r")
 
 if args.feed:
     feed = david_api.get_api_response("bootlicker_feed", [username])
