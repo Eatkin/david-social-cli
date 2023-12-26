@@ -54,7 +54,7 @@ def get_david_ticker():
     ticker = tickers[-1].text
     return ticker
 
-def update_david_ticker():
+def update_david_ticker(ticker_text):
     """Heads to the update ticker page and submits an update"""
     # Click on the anchor tag with content "update ticker or submit cat petting pics"
     update_ticker_anchor = driver.find_element(By.LINK_TEXT, "update ticker or submit cat petting pics")
@@ -70,10 +70,8 @@ def update_david_ticker():
     # Find the submit button
     submit_button = driver.find_element(By.TAG_NAME, "button")
 
-    input = console.input("Update the David Social ticker here :3 ")
-
     # Send the input to the textarea
-    textarea.send_keys(input)
+    textarea.send_keys(ticker_text)
 
     # Click the submit button
     submit_button.click()
@@ -95,9 +93,8 @@ def update_david_ticker():
 
 
 
-def post_to_david_social():
+def post_to_david_social(post_content):
     """Submit a post!"""
-    input = console.input("Write stuff to your friends here :3 ")
     # Find the elements with id posting-box
     posting_box = driver.find_element(By.ID, "posting-box")
 
@@ -106,13 +103,15 @@ def post_to_david_social():
     posting_box.clear()
 
     # Set the content of the textarea
-    posting_box.send_keys(input)
+    posting_box.send_keys(post_content)
 
     # Find the button (its the second one, very good design David including no ids thank you)
     submit_button = driver.find_elements(By.TAG_NAME, "button")[1]
 
     # Press button
     submit_button.click()
+
+    console.print("Posted!")
 
 
 def parse_soup(soup):

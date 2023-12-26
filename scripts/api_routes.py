@@ -64,7 +64,7 @@ def validate_routes(quiet=False):
 
     return routes_missing
 
-def get_api_response(route, params):
+def get_api_response(route, params=[]):
     if route in missing_routes:
         console.print(f"Error: {route} is not set in environment variables")
         return None
