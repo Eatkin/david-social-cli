@@ -52,7 +52,6 @@ success = cu.login()
 if not success:
     exit(1)
 
-console.print("-" * 80, end="\n\r")
 
 # We've logged in so we can get the ticker (if necessary)
 if args.ticker:

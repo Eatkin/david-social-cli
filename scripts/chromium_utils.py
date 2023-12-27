@@ -106,12 +106,22 @@ def post_to_david_social(post_content):
     posting_box.send_keys(post_content)
 
     # Find the button (its the second one, very good design David including no ids thank you)
-    submit_button = driver.find_elements(By.TAG_NAME, "button")[1]
+    # The button has inner content "Post" so we can find it that way
+    submit_button = driver.find_element(By.XPATH, "//button[text()='Post']")
 
     # Press button
     submit_button.click()
 
-    console.print("Posted!")
+    # Now wait for the page to refresh so we know the post has been submitted
+    try:
+        wait = WebDriverWait(driver, 10)
+        # We can wait until the posting-box
+        wait.until(EC.staleness_of(posting_box))
+        console.print("Posted!")
+    except Exception as e:
+        print(e)
+        console.print("Error: post failed to submit")
+
 
 
 def parse_soup(soup):
@@ -163,6 +173,11 @@ def login(output=True):
         alert.accept()
         if output:
             console.print("Login success!")
+            console.print("-" * 80, end="\n\r")
+
+        # Wait until the feed has loaded
+        wait = WebDriverWait(driver, 10)
+        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "post")))
         return True
     except:
         if output:
