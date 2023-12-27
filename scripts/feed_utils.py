@@ -4,6 +4,8 @@ from scripts.console import console
 
 def print_feed(feed):
     for post in feed:
+        post_id = post['id']
+        replies = post['ncomments']
         # Format the timestamp
         timestamp = post['timestamp']
         timestamp = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -11,7 +13,8 @@ def print_feed(feed):
 
         # Display the post
         console.print("-" * 80, end="\n\r")
-        console.print(f"{post['username']} at {date_time}", end="\n\r")
+        console.print(f"ID: {post_id} | Replies: {replies}")
+        console.print(f"Posted by {post['username']} at {date_time}", end="\n\r")
         console.print(post['content'], end="\n\r")
         console.print("-" * 80, end="\n\r")
 

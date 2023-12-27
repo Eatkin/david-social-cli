@@ -29,8 +29,12 @@ def get_david_homepage():
     driver.get(url)
     # Javascript is used to load the content of the page
     # So we need to wait until the "welcomepage" div is loaded
-    wait = WebDriverWait(driver, 10)
-    wait.until(EC.presence_of_element_located(("id", "welcomepage")))
+    try:
+        wait = WebDriverWait(driver, 10)
+        wait.until(EC.presence_of_element_located(("id", "welcomepage")))
+    except:
+        console.print("Error: David Social is broken :(")
+        exit(1)
 
     # Now we can parse the content but delete the form
     soup = BeautifulSoup(driver.page_source, "html.parser")
