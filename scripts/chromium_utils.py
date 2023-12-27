@@ -117,7 +117,7 @@ def post_to_david_social(post_content):
         wait = WebDriverWait(driver, 10)
         # We can wait until the posting-box
         wait.until(EC.staleness_of(posting_box))
-        console.print("Posted!")
+        console.print(f"Your message \"{post_content}\" to your friends has been posted! :3")
     except Exception as e:
         print(e)
         console.print("Error: post failed to submit")

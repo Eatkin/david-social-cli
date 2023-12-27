@@ -66,6 +66,16 @@ if args.catpets:
     console.print(f"The cat has been pet {catpets['pets']} times", end="\n\r")
     console.print("-" * 80, end="\n\r")
 
+if args.feed:
+    feed = david_api.get_api_response("bootlicker_feed", [username])
+    # Print the feed
+    print_feed(feed[:args.feed])
+
+
+if args.global_feed:
+    global_feed = david_api.get_api_response("global_feed")
+    print_feed(global_feed[:args.global_feed])
+
 if args.update_ticker:
     if args.update_ticker == "":
         console.print("Error: ticker cannot be empty", end="\n\r")
@@ -79,18 +89,6 @@ if args.post:
     else:
         cu.post_to_david_social(args.post)
         console.print("-" * 80, end="\n\r")
-
-if args.feed:
-    feed = david_api.get_api_response("bootlicker_feed", [username])
-    # Print the feed
-    print_feed(feed[:args.feed])
-
-
-if args.global_feed:
-    global_feed = david_api.get_api_response("global_feed")
-    print_feed(global_feed[:args.global_feed])
-
-
 
 """TODO:
 Cleanup the code below and remove anything redundant
