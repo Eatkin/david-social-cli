@@ -1,4 +1,6 @@
-"""TODO: clean up menu_utils and constants because they are not used"""
+"""TODO: clean up menu_utils and constants because they are not used
+Add error handling for when the API request fails
+"""
 
 import os
 import scripts.toml_utils as tu
@@ -105,8 +107,12 @@ def print_replies():
 
 def print_avatar():
     # Use the get_avatar route to get the avatar
-    avatar_url = david_api.get_api_response("avi-url", [args.get_avatar])
-
+    console.print(f"{args.get_avatar}'s avatar for your viewing pleasure:", end="\n\r")
+    avatar_url = david_api.get_api_response("avi_url", [args.get_avatar])
+    # Convert to ascii
+    avi_ascii = su.image_to_ascii(avatar_url, url=True)
+    console.print(avi_ascii, end="\n\r")
+    console.print("-" * 80, end="\n\r")
 
 
 # Main execution
@@ -134,3 +140,5 @@ if __name__ == "__main__":
         make_post()
     if args.get_replies:
         print_replies()
+    if args.get_avatar:
+        print_avatar()
