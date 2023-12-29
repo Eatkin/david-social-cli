@@ -15,9 +15,12 @@ def argparse_init():
     args.add_argument("-p", "--post", type=str, help="Make a post e.g. -p \"Hello friends :3\"", default=None)
     args.add_argument("-ut", "--update-ticker", type=str, help="Update the ticker e.g. -ut \"Hello everyone on David Social :3\"", default=None)
     args.add_argument("-cp", "--catpets", action="store_true", help="Get the number of cat pets, e.g. -cp", default=None)
+    args.add_argument("-gr", "--get-replies", type=int, help="Get replies to a post by post id, e.g. -gr 123", default=None)
+    # These need adding in the future
+    args.add_argument("-gav", "--get-avatar", type=str, help="Get a user's avatar, e.g. -gav username", default=None)
+    args.add_argument("-gup", "--get-user-posts", type=str, help="Get a user's posts, e.g. -gup username", default=None)
+    args.add_argument("-gb", "--get-bootlickers", type=str, help="Get a user's bootlickers, e.g. -gb username", default=None)
 
-    # Stuff to add: get post by ID, get user avatar, get user posts, get bootlickers, idk
-    # Probably like a check notifications thing too
     return args
 
 def validate_arguments(args):

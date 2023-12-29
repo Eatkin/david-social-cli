@@ -92,6 +92,23 @@ def make_post():
         cu.post_to_david_social(args.post)
         console.print("-" * 80, end="\n\r")
 
+def print_replies():
+    # For this we call the post_data route to get the initial post
+    # Then the replies route to get the replies
+    post_data = david_api.get_api_response("post_data", [args.get_replies])
+    replies = david_api.get_api_response("replies", [args.get_replies])
+    # Join the post data and replies
+    post_data = [post_data]
+    post_data.extend(replies)
+    # Now use the print_feed function to print the replies
+    print_feed(post_data)
+
+def print_avatar():
+    # Use the get_avatar route to get the avatar
+    avatar_url = david_api.get_api_response("avi-url", [args.get_avatar])
+
+
+
 # Main execution
 if __name__ == "__main__":
     print_david_logo()
@@ -115,3 +132,5 @@ if __name__ == "__main__":
         update_ticker()
     if args.post:
         make_post()
+    if args.get_replies:
+        print_replies()

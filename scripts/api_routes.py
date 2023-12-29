@@ -19,7 +19,7 @@ get_routes = {
     "get_bootlickers": os.environ.get("DAVID_GET_BOOTLICKERS"),
     "get_followers": os.environ.get("DAVID_GET_FOLLOWERS"),
     "get_likes": os.environ.get("DAVID_GET_LIKES"),
-    "avi-url": os.environ.get("DAVID_GET_AVI_URL"),
+    "avi_url": os.environ.get("DAVID_GET_AVI_URL"),
 }
 
 # Lookup table for the parameters of each route
@@ -37,7 +37,7 @@ route_params = {
     "get_bootlickers": ["id"],
     "get_followers": ["id"],
     "get_likes": ["id"],
-    "avi-url": ["id"],
+    "avi_url": ["id"],
 }
 
 def validate_routes(quiet=False):
