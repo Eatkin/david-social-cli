@@ -79,6 +79,10 @@ def get_api_response(route, params=[]):
 
     if response.status_code == 200:
         json_data = response.json()
+        # Check if there IS data
+        if json_data == "" or json_data is None:
+            console.print(f"Error: {route} returned no data")
+            return None
         try:
             return json.loads(json_data)
         except:
