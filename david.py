@@ -1,10 +1,5 @@
-"""TODO: clean up menu_utils and constants because they are not used
-for some reason the string utils convert to ascii seems completely unable to deal with David's avatar lol
-"""
-
 import os
 import scripts.toml_utils as tu
-import scripts.chromium_utils as cu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
 import scripts.argparse_utils as au
@@ -29,79 +24,53 @@ def get_args():
         exit(1)
     return args
 
-def validate_api_routes():
-    # Check the API routes
-    console.print("Checking API routes...", end="\n\r")
-    missing_routes = david_api.validate_routes()
-
-    return missing_routes
-
-def get_username():
-    # Get our username
-    username, _ = tu.get_secrets()
-    del _
-
-    return username
-
-def print_homepage():
-    # Get the homepage
-    homepage_soup = cu.get_david_homepage()
-    homepage_content = cu.parse_soup(homepage_soup)
-
-    # Homepage is in markdown format so parse it with rich
-    homepage_markdown = Markdown(homepage_content)
-    console.print(homepage_markdown)
-    console.print("-" * 80, end="\n\r")
-
 def login():
-    # Login
-    console.print("Logging in...", end="\n\r")
-    success = cu.login()
-    if not success:
-        exit(1)
+    username, password = tu.get_secrets()
+    session = david_api.query_api("login", [username, password])
+    return session
 
 def print_ticker():
-    try:
-        ticker = cu.get_david_ticker()
-        console.print("Ticker: " + ticker, end="\n\r")
-        console.print("-" * 80, end="\n\r")
-    except:
-        console.print("Error: failed to get ticker", end="\n\r")
+    ticker = david_api.query_api("get-ticker-text")
+    # Ticker is html so extract text from the soup
+    if ticker is None:
+        ticker = "No ticker text"
+    console.print("Ticker: " + ticker, end="\n\r")
+    console.print("-" * 80, end="\n\r")
 
 def print_catpets():
-    catpets = david_api.get_api_response("get_cat_pets")
+    catpets = None
+    console.print("Cat petting API route is not implemented yet", end="\n\r")
     if catpets is not None:
         console.print(f"The cat has been pet {catpets['pets']} times", end="\n\r")
         console.print(" (^・ω・^ ) ", end="\n\r")
         console.print("-" * 80, end="\n\r")
 
 def print_bootlicker_feed():
-    bootlicker_feed = david_api.get_api_response("bootlicker_feed", [username])
+    params = [] if args.feed is None else [args.feed]
+    bootlicker_feed = david_api.query_api("bootlicker-feed", params=params, cookies=cookies)
     if bootlicker_feed is not None:
         # Print the feed
-        print_feed(bootlicker_feed[:args.feed])
+        print_feed(bootlicker_feed)
 
 def print_global_feed():
-    global_feed = david_api.get_api_response("global_feed")
+    params = [] if args.global_feed is None else [args.global_feed]
+    global_feed = david_api.query_api("global-feed", params=params, cookies=cookies)
     if global_feed is not None:
-        print_feed(global_feed[:args.global_feed])
+        print_feed(global_feed)
 
 def update_ticker():
-    if args.update_ticker == "":
-        console.print("Error: ticker cannot be empty", end="\n\r")
-    else:
-        try:
-            cu.update_david_ticker(args.update_ticker)
-            console.print("-" * 80, end="\n\r")
-        except:
-            console.print("Error: failed to update ticker", end="\n\r")
+    console.print("Ticker updating is very in development", end="\n\r")
 
 def make_post():
     if args.post == "":
         console.print("Error: post cannot be empty", end="\n\r")
     else:
+        # TODO: add a check for the length of the post
+        # We can post 240 characters I think
+        # So give the option of splitting post into post + replies
         try:
-            cu.post_to_david_social(args.post)
+            david_api.query_api("new-post", params=[args.post, 0], cookies=cookies)
+            console.print("Posted!", end="\n\r")
             console.print("-" * 80, end="\n\r")
         except:
             console.print("Error: failed to post", end="\n\r")
@@ -109,8 +78,8 @@ def make_post():
 def print_replies():
     # For this we call the post_data route to get the initial post
     # Then the replies route to get the replies
-    post_data = david_api.get_api_response("post_data", [args.get_replies])
-    replies = david_api.get_api_response("replies", [args.get_replies])
+    post_data = david_api.query_api("get-post", [args.get_replies], cookies=cookies)
+    replies = david_api.query_api("replies", [args.get_replies], cookies=cookies)
     # Join the post data and replies
     if post_data is not None and replies is not None:
         post_data = [post_data]
@@ -122,7 +91,7 @@ def print_replies():
 
 def print_avatar():
     # Use the get_avatar route to get the avatar
-    avatar_url = david_api.get_api_response("avi_url", [args.get_avatar])
+    avatar_url = david_api.query_api("avi-url", [args.get_avatar])
     if avatar_url is not None:
         # Convert to ascii
         console.print(f"{args.get_avatar}'s avatar for your viewing pleasure:", end="\n\r")
@@ -133,25 +102,27 @@ def print_avatar():
 
 # Main execution
 if __name__ == "__main__":
-    console.print("This doesn't work at the moment, sorry :(", end="\n\r")
-    console.print("Updating to new API routes...", end="\n\r")
-    exit(1)
     print_david_logo()
     args = get_args()
-    missing_routes = validate_api_routes()
     console.print("Loading David Social...", end="\n\r")
-    username = get_username()
-    print_homepage()
-    login()
+
+    session = login()
+    if session is None:
+        console.print("Error: failed to login", end="\n\r")
+        exit(1)
+
+    cookies = session.cookies
+
     console.print("Welcome to David Social!", end="\n\r")
+
     # Run through the arguments
     if args.ticker:
         print_ticker()
     if args.catpets:
         print_catpets()
-    if args.feed:
+    if args.feed != -1:
         print_bootlicker_feed()
-    if args.global_feed:
+    if args.global_feed != -1:
         print_global_feed()
     if args.update_ticker:
         update_ticker()
@@ -160,4 +131,5 @@ if __name__ == "__main__":
     if args.get_replies:
         print_replies()
     if args.get_avatar:
+        # TODO: Why the f does this return bad request??
         print_avatar()

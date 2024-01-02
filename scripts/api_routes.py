@@ -1,6 +1,6 @@
-import os
 import requests
 import json
+from bs4 import BeautifulSoup
 from scripts.console import console
 
 
@@ -63,15 +63,26 @@ def query_api(route, params=[], cookies=None):
 
     params = {p_name: p for p_name, p in zip(route_params[route], params)}
 
+    # Construct url
+    url = BASE_URL + routes[route][1]
+
     # Make the request
-    response = routes[route][0](BASE_URL + routes[route][1], json=params, cookies=cookies)
+    response = routes[route][0](url, json=params, cookies=cookies)
 
     if response.status_code == 200:
+        # Specific exception for login
+        if route == "login":
+            # This returns the session
+            return response
+
         # Some of the get requests return a string instead of json
         try:
             json_data = response.json()
         except:
-            json_data = response.text
+            html = response.text
+            soup = BeautifulSoup(html, "html.parser")
+            # Extract the text from the soup
+            json_data = soup.text
 
         # Check if there IS data
         if json_data == "" or json_data is None:
