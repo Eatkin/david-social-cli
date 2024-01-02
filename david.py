@@ -59,7 +59,11 @@ def print_global_feed():
         print_feed(global_feed)
 
 def update_ticker():
-    console.print("Ticker updating is very in development", end="\n\r")
+    if args.update_ticker == "":
+        console.print("Error: ticker cannot be empty", end="\n\r")
+    else:
+        david_api.query_api("public-set-ticker-text", params=[args.update_ticker], cookies=cookies)
+        console.print("Ticker updated!", end="\n\r")
 
 def make_post():
     if args.post == "":
@@ -105,6 +109,12 @@ if __name__ == "__main__":
     print_david_logo()
     args = get_args()
     console.print("Loading David Social...", end="\n\r")
+
+    # Ping DS to check if it is up
+    ping = david_api.query_api("ping")
+    if ping is None:
+        console.print("Oh no, David Social is down!! How will we ever survive? :(", end="\n\r")
+        exit(1)
 
     session = login()
     if session is None:
