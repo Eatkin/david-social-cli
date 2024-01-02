@@ -38,12 +38,17 @@ def print_ticker():
     console.print("-" * 80, end="\n\r")
 
 def print_catpets():
-    catpets = None
-    console.print("Cat petting API route is not implemented yet", end="\n\r")
+    catpets = david_api.query_api("get-cat-pets")
     if catpets is not None:
         console.print(f"The cat has been pet {catpets['pets']} times", end="\n\r")
-        console.print(" (^・ω・^ ) ", end="\n\r")
+        console.print("(^・ω・^ )", end="\n\r")
         console.print("-" * 80, end="\n\r")
+
+def pet_cat():
+    david_api.query_api("pet-cat", cookies=cookies)
+    console.print("You pet the cat", end="\n\r")
+    print_catpets()
+    console.print("-" * 80, end="\n\r")
 
 def print_bootlicker_feed():
     params = [] if args.feed is None else [args.feed]
@@ -95,7 +100,7 @@ def print_replies():
 
 def print_avatar():
     # Use the get_avatar route to get the avatar
-    avatar_url = david_api.query_api("get-avi", [args.get_avatar])
+    avatar_url = david_api.query_api("avi-url", [args.get_avatar])
     if avatar_url is not None:
         # Convert to ascii
         console.print(f"{args.get_avatar}'s avatar for your viewing pleasure:", end="\n\r")
@@ -128,7 +133,10 @@ if __name__ == "__main__":
     # Run through the arguments
     if args.ticker:
         print_ticker()
-    if args.catpets:
+    if args.pet_cat:
+        pet_cat()
+    # This line is elif because we print catpets when we pet the cat anyway
+    elif args.catpets:
         print_catpets()
     if args.feed != -1:
         print_bootlicker_feed()

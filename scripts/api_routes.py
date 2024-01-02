@@ -11,7 +11,7 @@ BASE_URL = "https://www.davidsocial.com"
 routes = {
     'ping': (requests.get, '/api/ping'),
     'version': (requests.get, '/api/version'),
-    'get-avi': (requests.get, '/api/get-avi'),
+    'avi-url': (requests.get, '/api/avi-url'),
     'user-posts': (requests.get, '/api/user-posts'),
     'replies': (requests.get, '/api/replies'),
     'get-post': (requests.get, '/api/get-post'),
@@ -29,6 +29,8 @@ routes = {
     'like-post': (requests.post, '/api/like-post'),
     'my-notifications': (requests.post, '/api/my-notifications'),
     'public-set-ticker-text': (requests.post, '/api/public-set-ticker-text'),
+    'pet-cat': (requests.get, '/api/pet-cat'),
+    'get-cat-pets': (requests.get, '/api/get-cat-pets'),
 }
 
 # Lookup table for the parameters of each route
@@ -36,7 +38,7 @@ routes = {
 route_params = {
     'ping': [],
     'version': [],
-    'get-avi': ['username'],
+    'avi-url': ['username'],
     'user-posts': ['username'],
     'replies': ['id'],
     'get-post': ['id'],
@@ -54,6 +56,8 @@ route_params = {
     'like-post': ['id'],
     'my-notifications': [],
     'public-set-ticker-text': ['text'],
+    'pet-cat': [],
+    'get-cat-pets': [],
 }
 
 def query_api(route, params=[], cookies=None):
