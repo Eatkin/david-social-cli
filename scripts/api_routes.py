@@ -4,40 +4,56 @@ import json
 from scripts.console import console
 
 
+BASE_URL = "https://www.davidsocial.com"
+
 # Define routes for the API
 # Uses environment variables to hide the routes
-get_routes = {
-    "profile": os.environ.get("DAVID_GET_PROFILE"),
-    "check_already_liked": os.environ.get("DAVID_GET_CHECK_ALREADY_LIKED"),
-    "get_cat_pets": os.environ.get("DAVID_GET_CAT_PETS"),
-    "user_posts": os.environ.get("DAVID_GET_USER_POSTS"),
-    "replies": os.environ.get("DAVID_GET_REPLIES"),
-    "post_data": os.environ.get("DAVID_GET_POST_DATA"),
-    "user_list": os.environ.get("DAVID_GET_USER_LIST"),
-    "bootlicker_feed": os.environ.get("DAVID_GET_BOOTLICKER_FEED"),
-    "global_feed": os.environ.get("DAVID_GET_GLOBAL_FEED"),
-    "get_bootlickers": os.environ.get("DAVID_GET_BOOTLICKERS"),
-    "get_followers": os.environ.get("DAVID_GET_FOLLOWERS"),
-    "get_likes": os.environ.get("DAVID_GET_LIKES"),
-    "avi_url": os.environ.get("DAVID_GET_AVI_URL"),
+routes = {
+    'ping': (requests.get, '/api/ping'),
+    'version': (requests.get, '/api/version'),
+    'avi-url': (requests.get, '/api/avi-url'),
+    'user-posts': (requests.get, '/api/user-posts'),
+    'replies': (requests.get, '/api/replies'),
+    'get-post': (requests.get, '/api/get-post'),
+    'user-list': (requests.get, '/api/user-list'),
+    'bootlickers': (requests.get, '/api/bootlickers'),
+    'bootlicking': (requests.get, '/api/bootlicking'),
+    'liked-by': (requests.get, '/api/liked-by'),
+    'profile': (requests.get, '/api/profile'),
+    'get-ticker-text': (requests.get, '/api/get-ticker-text'),
+    'login': (requests.post, '/login'),
+    'global-feed': (requests.post, '/api/global-feed'),
+    'bootlicker-feed': (requests.post, '/api/bootlicker-feed'),
+    'new-post': (requests.post, '/api/new-post'),
+    'delete-post': (requests.post, '/api/delete-post'),
+    'like-post': (requests.post, '/api/like-post'),
+    'my-notifications': (requests.post, '/api/my-notifications'),
+    'public-set-ticker-text': (requests.post, '/api/public-set-ticker-text'),
 }
 
 # Lookup table for the parameters of each route
 # (Mostly just for my own reference)
 route_params = {
-    "profile": ["username"],
-    "check_already_liked": ["postId"],
-    "get_cat_pets": [],
-    "user_posts": ["username"],
-    "replies": ["postId"],
-    "post_data": ["id"],
-    "user_list": [],
-    "bootlicker_feed": ["id"],
-    "global_feed": [],
-    "get_bootlickers": ["id"],
-    "get_followers": ["id"],
-    "get_likes": ["id"],
-    "avi_url": ["id"],
+    'ping': [],
+    'version': [],
+    'avi-url': ['username'],
+    'user-posts': ['username'],
+    'replies': ['id'],
+    'get-post': ['id'],
+    'user-list': [],
+    'bootlickers': ['username'],
+    'bootlicking': ['username'],
+    'liked-by': ['id'],
+    'profile': ['username'],
+    'get-ticker-text': [],
+    'login': ['username', 'password'],
+    'global-feed': ['window'],
+    'bootlicker-feed': ['window'],
+    'new-post': ['text', 'replyTo'],
+    'delete-post': ['id'],
+    'like-post': ['id'],
+    'my-notifications': [],
+    'public-set-ticker-text': ['text'],
 }
 
 def validate_routes(quiet=False):

@@ -1,4 +1,5 @@
 """TODO: clean up menu_utils and constants because they are not used
+for some reason the string utils convert to ascii seems completely unable to deal with David's avatar lol
 """
 
 import os
@@ -132,6 +133,9 @@ def print_avatar():
 
 # Main execution
 if __name__ == "__main__":
+    console.print("This doesn't work at the moment, sorry :(", end="\n\r")
+    console.print("Updating to new API routes...", end="\n\r")
+    exit(1)
     print_david_logo()
     args = get_args()
     missing_routes = validate_api_routes()
