@@ -56,49 +56,29 @@ route_params = {
     'public-set-ticker-text': ['text'],
 }
 
-def validate_routes(quiet=False):
-    # Loop over the get routes to check if they are set
-    all_routes_missing = True
-    routes_missing = []
-    for route in get_routes:
-        if get_routes[route] == "" or get_routes[route] is None:
-            if not quiet:
-                print(f"Error: {route} is not set in environment variables")
-            routes_missing.append(route)
-        else:
-            all_routes_missing = False
-
-    if not quiet:
-        if all_routes_missing:
-            print("Error: no routes set in environment variables")
-            print("Please contact David for API routes")
-        elif len(routes_missing) > 0:
-            print(f"Missing routes: {routes_missing}")
-            print("Functionality will be limited")
-        else:
-            print("All routes set! :3")
-
-    return routes_missing
-
-def get_api_response(route, params=[]):
-    if route in missing_routes:
-        console.print(f"Error: {route} is not set in environment variables")
-        return None
-    if route not in get_routes:
+def query_api(route, params=[], cookies=None):
+    if route not in routes:
         console.print(f"Error: {route} is not a valid route")
         return None
 
     params = {p_name: p for p_name, p in zip(route_params[route], params)}
 
     # Make the request
-    response = requests.get(get_routes[route], params=params)
+    response = routes[route][0](BASE_URL + routes[route][1], json=params, cookies=cookies)
 
     if response.status_code == 200:
-        json_data = response.json()
+        # Some of the get requests return a string instead of json
+        try:
+            json_data = response.json()
+        except:
+            json_data = response.text
+
         # Check if there IS data
         if json_data == "" or json_data is None:
             console.print(f"Error: {route} returned no data")
             return None
+
+        # Finally parse the json if applicable
         try:
             return json.loads(json_data)
         except:
@@ -106,6 +86,3 @@ def get_api_response(route, params=[]):
     else:
         console.print(f"Error: {response.status_code} {response.reason}")
         return None
-
-
-missing_routes = validate_routes(quiet=True)
