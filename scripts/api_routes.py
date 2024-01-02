@@ -11,7 +11,7 @@ BASE_URL = "https://www.davidsocial.com"
 routes = {
     'ping': (requests.get, '/api/ping'),
     'version': (requests.get, '/api/version'),
-    'avi-url': (requests.get, '/api/avi-url'),
+    'get-avi': (requests.get, '/api/get-avi'),
     'user-posts': (requests.get, '/api/user-posts'),
     'replies': (requests.get, '/api/replies'),
     'get-post': (requests.get, '/api/get-post'),
@@ -36,7 +36,7 @@ routes = {
 route_params = {
     'ping': [],
     'version': [],
-    'avi-url': ['username'],
+    'get-avi': ['username'],
     'user-posts': ['username'],
     'replies': ['id'],
     'get-post': ['id'],

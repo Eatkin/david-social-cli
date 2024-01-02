@@ -91,7 +91,7 @@ def print_replies():
 
 def print_avatar():
     # Use the get_avatar route to get the avatar
-    avatar_url = david_api.query_api("avi-url", [args.get_avatar])
+    avatar_url = david_api.query_api("get-avi", [args.get_avatar])
     if avatar_url is not None:
         # Convert to ascii
         console.print(f"{args.get_avatar}'s avatar for your viewing pleasure:", end="\n\r")
@@ -131,5 +131,4 @@ if __name__ == "__main__":
     if args.get_replies:
         print_replies()
     if args.get_avatar:
-        # TODO: Why the f does this return bad request??
         print_avatar()
