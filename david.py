@@ -100,13 +100,19 @@ def print_replies():
 
 def print_avatar():
     # Use the get_avatar route to get the avatar
-    avatar_url = david_api.query_api("avi-url", [args.get_avatar])
+    avatar_url = david_api.query_api("avi-url", [args.get_avatar], cookies=cookies)
     if avatar_url is not None:
         # Convert to ascii
         console.print(f"{args.get_avatar}'s avatar for your viewing pleasure:", end="\n\r")
         avi_ascii = su.image_to_ascii(avatar_url, url=True)
         console.print(avi_ascii, end="\n\r")
         console.print("-" * 80, end="\n\r")
+
+def print_user_posts():
+    posts = david_api.query_api("user-posts", [args.get_user_posts], cookies=cookies)
+    # Use the print feed utility
+    if posts is not None:
+        print_feed(posts)
 
 
 # Main execution
@@ -150,3 +156,6 @@ if __name__ == "__main__":
         print_replies()
     if args.get_avatar:
         print_avatar()
+    # Note this prints ALL posts
+    if args.get_user_posts:
+        print_user_posts()

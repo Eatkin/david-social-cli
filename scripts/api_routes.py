@@ -2,6 +2,7 @@ import requests
 import json
 from bs4 import BeautifulSoup
 from scripts.console import console
+from PIL import Image
 
 
 BASE_URL = "https://www.davidsocial.com"
@@ -60,7 +61,7 @@ route_params = {
     'get-cat-pets': [],
 }
 
-def query_api(route, params=[], cookies=None):
+def query_api(route, params=[], cookies=None, verbose=False):
     if route not in routes:
         console.print(f"Error: {route} is not a valid route")
         return None
@@ -70,8 +71,12 @@ def query_api(route, params=[], cookies=None):
     # Construct url
     url = BASE_URL + routes[route][1]
 
+    if verbose:
+        console.print(f"Making request to {url}", end="\n\r")
+        console.print(f"Params: {params}", end="\n\r")
+
     # Make the request
-    response = routes[route][0](url, json=params, cookies=cookies)
+    response = routes[route][0](url, json=params, params=params, cookies=cookies)
 
     if response.status_code == 200:
         # Specific exception for login

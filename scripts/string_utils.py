@@ -11,11 +11,39 @@ def image_to_ascii(image, url=True):
     """Definitely not plaigarised from https://www.askpython.com/python/examples/turn-images-to-ascii-art-using-python"""
     if url:
         image = get_image(image)
+        exif = image.getexif()
+        rot = exif.get(274, None)
+        width, height = image.size
+        max_size = (max(width, height), max(width, height))
+        rotated_size = (height, width)
+        """Guide to rotation values:
+        1 = Horizontal (normal)
+        2 = Mirror horizontal
+        3 = Rotate 180
+        4 = Mirror vertical
+        5 = Mirror horizontal and rotate 270 CW
+        6 = Rotate 90 CW
+        7 = Mirror horizontal and rotate 90 CW
+        8 = Rotate 270 CW"""
+        # Process the image as necessary using a dictionary with functions
+        rot_dict = {
+            1: lambda x: x,
+            2: lambda x: x.transpose(Image.FLIP_LEFT_RIGHT),
+            3: lambda x: x.rotate(180),
+            4: lambda x: x.rotate(180).transpose(Image.FLIP_LEFT_RIGHT),
+            5: lambda x: x.resize(max_size).rotate(-90).transpose(Image.FLIP_LEFT_RIGHT).resize(rotated_size),
+            6: lambda x: x.resize(max_size).rotate(-90).resize(rotated_size),
+            7: lambda x: x.resize(max_size).rotate(90).transpose(Image.FLIP_LEFT_RIGHT).resize(rotated_size),
+            8: lambda x: x.resize(max_size).rotate(90).resize(rotated_size),
+        }
+        if rot is not None:
+            image = rot_dict[rot](image)
     else:
         image = Image.open(image)
         image = image.convert("RGBA")
     if image is None:
         return None
+
     # Resize the image
     max_width = 120
     max_height = 48
