@@ -2,7 +2,6 @@ import requests
 import json
 from bs4 import BeautifulSoup
 from scripts.console import console
-from PIL import Image
 
 
 BASE_URL = "https://www.davidsocial.com"

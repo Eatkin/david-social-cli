@@ -1,9 +1,9 @@
 import os
+from time import sleep
 import scripts.toml_utils as tu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
 import scripts.argparse_utils as au
-from rich.markdown import Markdown
 from scripts.console import console
 from scripts.feed_utils import print_feed
 
@@ -30,6 +30,7 @@ def login():
     return session
 
 def print_ticker():
+    console.print("Getting ticker does not work right now, enjoy this error message instead :)", end="\n\r")
     ticker = david_api.query_api("get-ticker-text")
     # Ticker is html so extract text from the soup
     if ticker is None:
@@ -58,7 +59,8 @@ def print_bootlicker_feed():
         print_feed(bootlicker_feed)
 
 def print_global_feed():
-    params = [] if args.global_feed is None else [args.global_feed]
+    # Default to 1 day
+    params = [1] if args.global_feed is None else [args.global_feed]
     global_feed = david_api.query_api("global-feed", params=params, cookies=cookies)
     if global_feed is not None:
         print_feed(global_feed)
@@ -113,7 +115,33 @@ def print_user_posts():
     # Use the print feed utility
     if posts is not None:
         print_feed(posts)
+    else:
+        console.print("Error: failed to get user posts", end="\n\r")
 
+def print_bootlickers():
+    bootlickers = david_api.query_api("bootlickers", [args.get_bootlickers], cookies=cookies)
+    if bootlickers is not None:
+        # Take 5 seconds to print it out
+        sleep_interval = 5 / len(bootlickers)
+        console.print(f"{args.get_bootlickers}'s bootlickers:", end="\n\r")
+        for bootlicker in bootlickers:
+            console.print(f"- {bootlicker}", end="\n\r")
+            sleep(sleep_interval)
+    else:
+        console.print("Error: failed to get bootlickers", end="\n\r")
+    console.print("-" * 80, end="\n\r")
+
+def print_bootlicking():
+    bootlicking = david_api.query_api("bootlicking", [args.get_bootlicking], cookies=cookies)
+    if bootlicking is not None:
+        sleep_interval = 5 / len(bootlicking)
+        console.print(f"{args.get_bootlicking}'s bootlicking:", end="\n\r")
+        for bootlicker in bootlicking:
+            console.print(f"- {bootlicker}", end="\n\r")
+            sleep(sleep_interval)
+    else:
+        console.print("Error: failed to get bootlicking", end="\n\r")
+    console.print("-" * 80, end="\n\r")
 
 # Main execution
 if __name__ == "__main__":
@@ -159,3 +187,7 @@ if __name__ == "__main__":
     # Note this prints ALL posts
     if args.get_user_posts:
         print_user_posts()
+    if args.get_bootlickers:
+        print_bootlickers()
+    if args.get_bootlicking:
+        print_bootlicking()

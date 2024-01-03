@@ -1,8 +1,13 @@
+from time import sleep
 import datetime
 import scripts.string_utils as su
 from scripts.console import console
 
+# How long to take to display the feed
+FEED_DISPLAY_TIME = 5
+
 def print_feed(feed):
+    sleep_interval = FEED_DISPLAY_TIME / len(feed)
     for post in feed:
         post_id = post['id']
         replies = post['ncomments']
@@ -35,3 +40,6 @@ def print_feed(feed):
                 console.print("Attached image:", end="\n\r")
                 # Use the default print because markdown doesn't work with ascii and it fucks the console print command up
                 print(ascii_image)
+        sleep(sleep_interval)
+
+    console.print("-" * 80, end="\n\r")
