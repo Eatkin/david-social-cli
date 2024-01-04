@@ -2,3 +2,4 @@ beautifulsoup4
 rich
 requests
 Pillow
+direnv

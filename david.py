@@ -1,6 +1,6 @@
 import os
 from time import sleep
-import scripts.toml_utils as tu
+import scripts.env_utils as eu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
 import scripts.argparse_utils as au
@@ -25,7 +25,7 @@ def get_args():
     return args
 
 def login():
-    username, password = tu.get_secrets()
+    username, password = eu.parse_secrets()
     session = david_api.query_api("login", [username, password])
     return session
 
