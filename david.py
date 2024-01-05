@@ -150,10 +150,12 @@ if __name__ == "__main__":
     console.print("Loading David Social...", end="\n\r")
 
     # Ping DS to check if it is up
-    ping = david_api.query_api("ping")
-    if ping is None:
+    version = david_api.query_api("version")
+    if version is None:
         console.print("Oh no, David Social is down!! How will we ever survive? :(", end="\n\r")
         exit(1)
+
+    version = version['version']
 
     session = login()
     if session is None:
@@ -162,7 +164,7 @@ if __name__ == "__main__":
 
     cookies = session.cookies
 
-    console.print("Welcome to David Social!", end="\n\r")
+    console.print(f"Welcome to David Social version {version}!", end="\n\r")
 
     # Run through the arguments
     if args.ticker:
