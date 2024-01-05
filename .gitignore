@@ -1,2 +1,4 @@
 secrets.toml
 .envrc
+*.pyc
+.idea

@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from scripts.console import console
 
 
-BASE_URL = "https://www.davidsocial.com"
+BASE_URL = "https://david-production.up.railway.app"
 
 # Define routes for the API
 # Uses environment variables to hide the routes
