@@ -28,8 +28,11 @@ def print_feed(feed):
 
         # Display any likes (can use the get-likes route but this works too)
         likes = post['liked_by']
-        likes = ", ".join(likes)
-        console.print(f"Liked by: {likes}", end="\n\r")
+        if len(likes) > 0:
+            likes = ", ".join(likes)
+            console.print(f"Liked by: {likes}", end="\n\r")
+        else:
+            console.print("No likes yet, you could be the first!", end="\n\r")
 
         # If there is an image attached convert to ascii and display it
         image_url = post['attached_image']
