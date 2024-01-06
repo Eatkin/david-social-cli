@@ -1,6 +1,7 @@
 import requests
 from PIL import Image
 from io import BytesIO
+import curses
 
 # Define the ascii characters to use for the image
 # ascii_chars = list("$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'.")
@@ -45,9 +46,13 @@ def image_to_ascii(image, url=True):
         return None
 
     # Resize the image
-    max_width = 120
-    max_height = 48
-    image, new_width, new_height = resize_image(image, max_width, max_height)
+    # This checks for the available space in the terminal
+    MAX_HEIGHT, MAX_WIDTH = curses.initscr().getmaxyx()
+    # Get current cursor position to avoid overflow
+    y, x = curses.initscr().getyx()
+    MAX_HEIGHT -= y
+    MAX_WIDTH -= x
+    image, new_width, new_height = resize_image(image, MAX_WIDTH, MAX_HEIGHT)
 
     # Convert to greyscale
     image = image.convert('L')

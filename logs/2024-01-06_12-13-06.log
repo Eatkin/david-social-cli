@@ -1,0 +1,5 @@
+DEBUG:PIL.PngImagePlugin:STREAM b'IHDR' 16 13
+DEBUG:PIL.PngImagePlugin:STREAM b'sRGB' 41 1
+DEBUG:PIL.PngImagePlugin:STREAM b'IDAT' 54 1757
+DEBUG:urllib3.connectionpool:Starting new HTTPS connection (1): david-production.up.railway.app:443
+DEBUG:urllib3.connectionpool:https://david-production.up.railway.app:443 "GET /api/version HTTP/1.1" 200 15
