@@ -3,3 +3,4 @@ rich
 requests
 Pillow
 direnv
+windows-curses
