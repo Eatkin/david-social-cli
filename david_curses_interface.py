@@ -70,11 +70,11 @@ def clear_row(stdscr, row):
     _, width = curses.initscr().getmaxyx()
     stdscr.addstr(row, 0, " " * (width - 1), WHITE_BLACK)
 
-def get_david_logo_ascii():
+def get_david_logo_ascii(dim_adjust=(0, 0)):
     """Returns ascii art of the David Social logo"""
     # Print out this very cool David Social logo
     david_logo = os.path.join(os.path.dirname(__file__), "assets/david.png")
-    david_ascii = su.image_to_ascii(david_logo, url=False)
+    david_ascii = su.image_to_ascii(david_logo, url=False, dim_adjust=dim_adjust)
     return david_ascii
 
 def print_ticker(stdscr, text, ticker_x):
@@ -144,6 +144,9 @@ def update_menu(stdscr, items):
     # Now handle some menu navigation
     # We know how many rows and columns we have so we can wrap and stuff
 
+    # Return the height of the menu
+    return rows
+
 
 
 def main(stdscr):
@@ -165,6 +168,8 @@ def main(stdscr):
     # Menuing
     global MENU_SELECTION
     MENU_SELECTION = (0, 0)
+
+    menu_rows = 0
 
     curses.curs_set(0)
     stdscr.clear()
@@ -236,6 +241,8 @@ def main(stdscr):
         # Detect Terminal resize
         new_max_height, new_max_width = curses.initscr().getmaxyx()
 
+        new_max_height -= menu_rows + 1
+
         try:
             if new_max_height != ascii_max_height or new_max_width != ascii_max_width:
                 # Update the height and width
@@ -248,7 +255,7 @@ def main(stdscr):
                 ascii_height = len(david_ascii.split("\n"))
                 if ascii_max_height != ascii_height or ascii_max_width != ascii_width:
                     # Re-generate the ascii
-                    david_ascii = get_david_logo_ascii()
+                    david_ascii = get_david_logo_ascii(dim_adjust=(0, menu_rows + 1))
 
                 # Redefine the ascii width (we want the width without padding)
                 ascii_width = len(david_ascii.split("\n")[0])
@@ -264,7 +271,7 @@ def main(stdscr):
 
         # Print menu
         try:
-            update_menu(stdscr, menu_items)
+            menu_rows = update_menu(stdscr, menu_items)
         except:
             pass
 

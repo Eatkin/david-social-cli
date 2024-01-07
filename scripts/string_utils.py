@@ -8,7 +8,7 @@ import curses
 # Alt, smaller gradient (looks better imo)
 ascii_chars = list(" .:-=+*#%@")[::-1]
 
-def image_to_ascii(image, url=True):
+def image_to_ascii(image, url=True, dim_adjust=(0, 0)):
     """Definitely not plaigarised from https://www.askpython.com/python/examples/turn-images-to-ascii-art-using-python"""
     if url:
         image = get_image(image)
@@ -50,6 +50,17 @@ def image_to_ascii(image, url=True):
     MAX_HEIGHT, MAX_WIDTH = curses.initscr().getmaxyx()
     # Need to take 1 off max width for some reason otherwise the printing is fucky
     MAX_WIDTH -= 1
+
+    # Also account for current cursor position
+    curs_y, curs_x = curses.initscr().getyx()
+
+    MAX_HEIGHT -= curs_y
+    MAX_WIDTH -= curs_x
+
+    # Adjust dimensions
+    MAX_WIDTH -= dim_adjust[0]
+    MAX_HEIGHT -= dim_adjust[1]
+
     image, new_width, new_height = resize_image(image, MAX_WIDTH, MAX_HEIGHT)
 
 
