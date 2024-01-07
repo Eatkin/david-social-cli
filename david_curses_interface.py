@@ -67,7 +67,7 @@ def login():
 
 def clear_row(stdscr, row):
     """Blank out the specified row"""
-    width = curses.COLS
+    _, width = curses.initscr().getmaxyx()
     stdscr.addstr(row, 0, " " * (width - 1), WHITE_BLACK)
 
 def get_david_logo_ascii():
@@ -259,12 +259,14 @@ def main(stdscr):
 
             # Print the ascii
             stdscr.addstr(print_ascii)
-        except Exception as e:
-            logging.info(f"Failed to print ascii: {e}")
+        except:
             pass
 
         # Print menu
-        # update_menu(stdscr, menu_items)
+        try:
+            update_menu(stdscr, menu_items)
+        except:
+            pass
 
         stdscr.refresh()
         curses.doupdate()
