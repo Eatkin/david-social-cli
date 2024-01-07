@@ -75,8 +75,6 @@ def print_ticker(stdscr, text, ticker_x):
 
 def update_menu(stdscr, items):
     """Prints menu items and handles inputs"""
-    # TODO: This explodes if the menu items are too long I think
-    # (Or if Terminal window is too small)
     # Just need to print the menu items
     # Get the Terminal size
     HEIGHT, WIDTH = curses.initscr().getmaxyx()
@@ -88,7 +86,7 @@ def update_menu(stdscr, items):
     rows = 0
     current_width = 0
     for item in items:
-        if current_width + longest_item > WIDTH:
+        if current_width + longest_item + 1 > WIDTH:
             current_width = 0
             rows += 1
             centre = round((longest_item - len(item))/2)
@@ -99,6 +97,7 @@ def update_menu(stdscr, items):
             coords.append((current_width + centre, rows))
             # Consistent spacing
             current_width += longest_item + 1
+
     x = 0
     y = HEIGHT - rows - 1
 
