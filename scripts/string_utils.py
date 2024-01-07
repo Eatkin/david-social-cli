@@ -52,6 +52,8 @@ def image_to_ascii(image, url=True):
     y, x = curses.initscr().getyx()
     MAX_HEIGHT -= y
     MAX_WIDTH -= x
+    # Don't know why but this is needed to avoid overflow I fucking hate this
+    MAX_WIDTH -= 1
     image, new_width, new_height = resize_image(image, MAX_WIDTH, MAX_HEIGHT)
 
     # Convert to greyscale
