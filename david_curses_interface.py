@@ -1,10 +1,11 @@
 import os
 import logging
-from datetime import datetime
 import atexit
-from time import sleep
 import curses
 from curses import wrapper
+from datetime import datetime
+from time import sleep
+from math import floor
 import scripts.env_utils as eu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
@@ -64,6 +65,10 @@ def login():
     session = david_api.query_api("login", [username, password])
     return session
 
+def clear_row(stdscr, row):
+    """Blank out the specified row"""
+    width = curses.COLS
+    stdscr.addstr(row, 0, " " * (width - 1), WHITE_BLACK)
 
 def get_david_logo_ascii():
     """Returns ascii art of the David Social logo"""
@@ -74,7 +79,8 @@ def get_david_logo_ascii():
 
 def print_ticker(stdscr, text, ticker_x):
     """Prints the ticker text with scrolling"""
-    width = curses.COLS
+    _, width = curses.initscr().getmaxyx()
+    # width -= 1
     ticker_spacing = round(width * 0.2)
     # Print the ticker with ticker_x being the offset by exploding it into a list
     # We need to AT least double the ticker text so it can scroll seamlessly for example if text is very long
@@ -125,6 +131,10 @@ def update_menu(stdscr, items):
     x = 0
     y = HEIGHT - rows - 1
 
+    # Blank the rows
+    for row in range(y, HEIGHT):
+        clear_row(stdscr, row)
+
     # Print the menu items
     for item in items:
         x_offset, y_offset = coords.pop(0)
@@ -159,13 +169,18 @@ def main(stdscr):
     curses.curs_set(0)
     stdscr.clear()
     stdscr.addstr("Welcome to David Social!\n")
-    # Print out the David logo
-    david_ascii = get_david_logo_ascii()
-    # Set cursor to the next line
-    stdscr.addstr(david_ascii)
+    stdscr.addstr("Logging you in...\n")
     stdscr.refresh()
 
-    sleep(1)
+    # Set up the david ascii art
+    david_ascii = get_david_logo_ascii()
+    ascii_width = len(david_ascii.split("\n")[0])
+    centre = floor((curses.COLS - ascii_width)/2)
+    # Centre the ascii art
+    print_ascii = "\n".join([" "*centre + line for line in david_ascii.split("\n")])
+
+    # Get available space for the ascii
+    ascii_max_height, ascii_max_width = curses.initscr().getmaxyx()
 
     # Ping DS
     version = david_api.query_api("version")
@@ -197,6 +212,8 @@ def main(stdscr):
     menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", "fdsiOFA", "fds", "FDSfdoihfdsa"]
     # Main loop
     while True:
+        # Update the terminal size
+        curses.update_lines_cols()
         # Print welcome message
         stdscr.clear()
         curses.curs_set(0)
@@ -208,10 +225,46 @@ def main(stdscr):
             ticker_x += 1
 
         stdscr.addstr("\n")
-        stdscr.addstr(f"Welcome to David Social version {version}!")
+        welcome_message = f"Welcome to David Social version {version}!"
+        # Centre the welcome message
+        _, max_width = curses.initscr().getmaxyx()
+        max_width -= 1
+        centre = round((max_width - len(welcome_message))/2)
+        stdscr.addstr(" " * centre + welcome_message)
+        stdscr.addstr("\n")
+
+        # Detect Terminal resize
+        new_max_height, new_max_width = curses.initscr().getmaxyx()
+
+        try:
+            if new_max_height != ascii_max_height or new_max_width != ascii_max_width:
+                # Update the height and width
+                ascii_max_height = new_max_height
+                ascii_max_width = new_max_width
+                # Ascii will need to be re-generated if width < ascii_width
+                # This will probably be a bit slow
+                # This is based on the print ascii which is dynamically resized by padding
+                ascii_width = len(print_ascii.split("\n")[0])
+                ascii_height = len(david_ascii.split("\n"))
+                if ascii_max_height != ascii_height or ascii_max_width != ascii_width:
+                    # Re-generate the ascii
+                    david_ascii = get_david_logo_ascii()
+
+                # Redefine the ascii width (we want the width without padding)
+                ascii_width = len(david_ascii.split("\n")[0])
+
+                # Re-centre the ascii by padding
+                centre = floor((ascii_max_width  - ascii_width)/2)
+                print_ascii = "\n".join([" "*centre + line for line in david_ascii.split("\n")])
+
+            # Print the ascii
+            stdscr.addstr(print_ascii)
+        except Exception as e:
+            logging.info(f"Failed to print ascii: {e}")
+            pass
 
         # Print menu
-        update_menu(stdscr, menu_items)
+        # update_menu(stdscr, menu_items)
 
         stdscr.refresh()
         curses.doupdate()

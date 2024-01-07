@@ -48,13 +48,10 @@ def image_to_ascii(image, url=True):
     # Resize the image
     # This checks for the available space in the terminal
     MAX_HEIGHT, MAX_WIDTH = curses.initscr().getmaxyx()
-    # Get current cursor position to avoid overflow
-    y, x = curses.initscr().getyx()
-    MAX_HEIGHT -= y
-    MAX_WIDTH -= x
-    # Don't know why but this is needed to avoid overflow I fucking hate this
+    # Need to take 1 off max width for some reason otherwise the printing is fucky
     MAX_WIDTH -= 1
     image, new_width, new_height = resize_image(image, MAX_WIDTH, MAX_HEIGHT)
+
 
     # Convert to greyscale
     image = image.convert('L')
