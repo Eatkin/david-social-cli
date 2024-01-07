@@ -95,7 +95,7 @@ def print_ticker(stdscr, text, ticker_x):
     # Join the ticker back into a string
     ticker = "".join(ticker)
     # Print the ticker with a colour pair
-    stdscr.addstr(ticker, curses.A_ITALIC | curses.A_BLINK | YELLOW_BLACK)
+    stdscr.addstr(ticker, curses.A_ITALIC | YELLOW_BLACK)
 
     # Wrap ticker_x
     if ticker_x >= len(text) + ticker_spacing:
@@ -235,7 +235,7 @@ def main(stdscr):
         _, max_width = curses.initscr().getmaxyx()
         max_width -= 1
         centre = round((max_width - len(welcome_message))/2)
-        stdscr.addstr(" " * centre + welcome_message)
+        stdscr.addstr(" " * centre + welcome_message, curses.A_BLINK)
         stdscr.addstr("\n")
 
         # Detect Terminal resize
