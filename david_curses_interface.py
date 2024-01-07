@@ -10,6 +10,30 @@ import scripts.api_routes as david_api
 import scripts.string_utils as su
 from scripts.feed_utils import print_feed
 
+"""
+TODO: Kill myself
+TODO: Menu navigation
+TODO: Menu lambda functions
+TODO: Set up state machine
+TODO: Stuff
+TODO: More stuff
+TODO: Even more stuff
+TODO: Kill myself again
+TODO: Ascend to a higher plane of existence
+TODO: Become a god
+TODO: Become one with the universe
+TODO: Become the universe
+TODO: Become everything
+TODO: Become nothing
+TODO: Become the void
+TODO: Become the void in the void
+TODO: Become the void in the void in the void
+TODO: Become the void in the void in the void in the void
+TODO: Become the void in the void in the void in the void in the void
+TODO: Resurrect myself
+TODO: Work on David Social CLI
+"""
+
 # Set up logging
 def logging_init():
     """Createss a logfile with the current date and time"""
@@ -104,7 +128,7 @@ def update_menu(stdscr, items):
     # Print the menu items
     for item in items:
         x_offset, y_offset = coords.pop(0)
-        col = HIGHLIGHT if MENU_SELECTION == items.index(item) else WHITE_BLACK
+        col = HIGHLIGHT if sum(MENU_SELECTION) == items.index(item) else WHITE_BLACK
         stdscr.addstr(y + y_offset, x + x_offset, item, col)
 
     # Now handle some menu navigation
@@ -130,7 +154,7 @@ def main(stdscr):
     WHITE_BLACK = curses.color_pair(3)
     # Menuing
     global MENU_SELECTION
-    MENU_SELECTION = 0
+    MENU_SELECTION = (0, 0)
 
     curses.curs_set(0)
     stdscr.clear()
