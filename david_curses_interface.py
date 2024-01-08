@@ -222,8 +222,9 @@ def main(stdscr):
         except:
             pass
 
-        # Print menu
+        # Menuing
         try:
+            menu.update()
             menu.draw()
         except:
             pass
