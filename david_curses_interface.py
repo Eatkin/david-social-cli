@@ -12,6 +12,7 @@ import scripts.string_utils as su
 from scripts.feed_utils import print_feed
 
 """
+TODO: Create a Menu class instead of what I'm doing now
 TODO: Kill myself
 TODO: Menu navigation
 TODO: Menu lambda functions
@@ -80,7 +81,6 @@ def get_david_logo_ascii(dim_adjust=(0, 0)):
 def print_ticker(stdscr, text, ticker_x):
     """Prints the ticker text with scrolling"""
     _, width = curses.initscr().getmaxyx()
-    # width -= 1
     ticker_spacing = round(width * 0.2)
     # Print the ticker with ticker_x being the offset by exploding it into a list
     # We need to AT least double the ticker text so it can scroll seamlessly for example if text is very long
