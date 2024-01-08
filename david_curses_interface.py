@@ -12,12 +12,12 @@ from scripts.feed_utils import print_feed
 from scripts.menu import Menu
 
 """
-TODO: Create a Menu class instead of what I'm doing now
-TODO: Create a git branch so I don't fuck everything up lol
 TODO: Kill myself
-TODO: Menu navigation
-TODO: Menu lambda functions
+TODO: Menu functionality, the menu is passed a list of states and returns the selected state
 TODO: Set up state machine
+TODO: The state machine is shit, should make class objects for each state
+TODO: Then we can have init and update
+TODO: That's going to be really fucking annoying
 TODO: Stuff
 TODO: More stuff
 TODO: Even more stuff
@@ -45,7 +45,7 @@ def logging_init():
         os.mkdir("logs")
     # Create a logfile with the current date and time
     filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
-    logging.basicConfig(filename=filename, level=logging.WARNING, encoding="utf-8")
+    logging.basicConfig(filename=filename, level=logging.DEBUG, encoding="utf-8")
     print(f"Logging to {filename}")
     return filename
 
@@ -104,10 +104,99 @@ def print_ticker(stdscr, text, ticker_x):
 
     return ticker_x
 
+
+class StateMain():
+    def __init__(self, args_dict):
+        stdscr = args_dict['stdscr']
+        session = args_dict['session']
+        self.stdscr = stdscr
+        # Set up the david ascii art
+        self.david_ascii = get_david_logo_ascii()
+        self.ascii_width = len(self.david_ascii.split("\n")[0])
+        centre = floor((curses.COLS - self.ascii_width)/2)
+        # Centre the ascii art
+        self.print_ascii = "\n".join([" "*centre + line for line in self.david_ascii.split("\n")])
+
+        # Ascii dims
+        self.ascii_max_height, self.ascii_max_width = self.stdscr.getmaxyx()
+
+        # Get the version
+        self.version = david_api.query_api("version")
+        self.version = self.version['version']
+
+        # Session
+        self.session = session
+
+        # Ticker
+        self.ticker_text = david_api.query_api("get-ticker-text")
+        if self.ticker_text is None:
+            self.ticker_text = "Ticker unavailable"
+
+        self.ticker_x = 0
+        self.ticker_update_rate = 0.2
+        self.t = datetime.now()
+        self.menu_rows = 1
+
+
+    def update(self, args_dict):
+        curses.update_lines_cols()
+        self.menu_rows = args_dict['menu_rows']
+
+    def update_ascii(self):
+        # Get any new ascii dims
+        new_max_height, new_max_width = curses.initscr().getmaxyx()
+        new_max_height -= self.menu_rows + 1
+
+        if new_max_height != self.ascii_max_height or new_max_width != self.ascii_max_width:
+            self.ascii_max_height, self.ascii_max_width = new_max_height, new_max_width
+            # Regenerate ascii at new size
+            # First check if this is necessary
+            ascii_width = len(self.print_ascii.split("\n")[0])
+            ascii_height = len(self.david_ascii.split("\n"))
+            if self.ascii_max_height != ascii_height or self.ascii_max_width != ascii_width:
+                # Re-generate the ascii
+                self.david_ascii = get_david_logo_ascii(dim_adjust=(0, self.menu_rows + 1))
+
+            # Redefine the ascii width (we want the width without padding)
+            ascii_width = len(self.david_ascii.split("\n")[0])
+
+            # Re-centre the ascii by padding
+            centre = floor((self.ascii_max_width  - ascii_width)/2)
+            self.print_ascii = "\n".join([" "*centre + line for line in self.david_ascii.split("\n")])
+
+        new_max_height -= self.menu_rows + 1
+
+    def cleanup(self):
+        logging.info('cleaning up StateMain stuff')
+
+    def draw(self):
+        self.stdscr.clear()
+        curses.curs_set(0)
+        self.ticker_x = print_ticker(self.stdscr, self.ticker_text, self.ticker_x)
+        dt = datetime.now() - self.t
+        if dt.total_seconds() > self.ticker_update_rate:
+            self.t = datetime.now()
+            self.ticker_x += 1
+
+        self.stdscr.addstr("\n")
+        welcome_message = f"Welcome to David Social version {self.version}!"
+        # Centre the welcome message
+        _, max_width = curses.initscr().getmaxyx()
+        max_width -= 1
+        centre = round((max_width - len(welcome_message))/2)
+        self.stdscr.addstr(" "*centre + welcome_message + "\n")
+
+        self.update_ascii()
+        # Print the ascii
+        self.stdscr.addstr(self.print_ascii)
+
+
+
 def main(stdscr):
     """Main function"""
     # Initialise curses
     stdscr = curses.initscr()
+
 
     # Constants
     # Colours - these MUST be globals because of some curses shit idk
@@ -132,24 +221,13 @@ def main(stdscr):
     stdscr.addstr("Logging you in...\n")
     stdscr.refresh()
 
-    # Set up the david ascii art
-    david_ascii = get_david_logo_ascii()
-    ascii_width = len(david_ascii.split("\n")[0])
-    centre = floor((curses.COLS - ascii_width)/2)
-    # Centre the ascii art
-    print_ascii = "\n".join([" "*centre + line for line in david_ascii.split("\n")])
-
-    # Get available space for the ascii
-    ascii_max_height, ascii_max_width = curses.initscr().getmaxyx()
-
     # Ping DS
-    version = david_api.query_api("version")
-    version = version['version']
+    ping = david_api.query_api("ping")
     stdscr.clear()
     curses.curs_set(0)
 
     # If DS is down we won't get a version
-    if version is None:
+    if ping is None:
         stdscr.addstr("Oh no, David Social is down!! How will we ever survive? :(")
         stdscr.refresh()
         exit(1)
@@ -157,68 +235,35 @@ def main(stdscr):
     # Should probably actually login
     session = login()
 
-    # Get the ticker text
-    ticker_text = david_api.query_api("get-ticker-text")
-    # Log the ticker text
-    logging.info(f"Ticker text: {ticker_text}")
-    if ticker_text is None:
-        ticker_text = "Ticker unavailable"
-    ticker_x = 0
-    # Scrolling ticker text causes some glitching which is annoying
-    ticker_update_rate = 0.2
-    t = datetime.now()
+    # Initial state is main
+    instantiate_args = {
+        'stdscr': stdscr,
+        'session': session,
+    }
+
+    state = StateMain(instantiate_args)
 
     # Main loop
     while True:
-        # Update the terminal size
-        curses.update_lines_cols()
-        # Print welcome message
-        stdscr.clear()
-        curses.curs_set(0)
-        # Print the ticker text and handle scrolling
-        ticker_x = print_ticker(stdscr, ticker_text, ticker_x)
-        dt = datetime.now() - t
-        if dt.total_seconds() > ticker_update_rate:
-            t = datetime.now()
-            ticker_x += 1
+        # Set up arguments
+        instantiate_args = {}
+        update_args = {}
+        if isinstance(state, StateMain):
+            update_args = {
+                'menu_rows': menu.get_rows(),
+            }
 
-        stdscr.addstr("\n")
-        welcome_message = f"Welcome to David Social version {version}!"
-        # Centre the welcome message
-        _, max_width = curses.initscr().getmaxyx()
-        max_width -= 1
-        centre = round((max_width - len(welcome_message))/2)
-        stdscr.addstr(" " * centre + welcome_message, curses.A_BLINK)
-        stdscr.addstr("\n")
-
-        # Detect Terminal resize
-        new_max_height, new_max_width = curses.initscr().getmaxyx()
-
-        new_max_height -= menu.get_rows() + 1
-
+        # Update the state
         try:
-            if new_max_height != ascii_max_height or new_max_width != ascii_max_width:
-                # Update the height and width
-                ascii_max_height = new_max_height
-                ascii_max_width = new_max_width
-                # Ascii will need to be re-generated if width < ascii_width
-                # This will probably be a bit slow
-                # This is based on the print ascii which is dynamically resized by padding
-                ascii_width = len(print_ascii.split("\n")[0])
-                ascii_height = len(david_ascii.split("\n"))
-                if ascii_max_height != ascii_height or ascii_max_width != ascii_width:
-                    # Re-generate the ascii
-                    david_ascii = get_david_logo_ascii(dim_adjust=(0, menu.get_rows() + 1))
+            state.update(update_args)
+        except Exception as e:
+            logging.exception(e)
+            exit(1)
 
-                # Redefine the ascii width (we want the width without padding)
-                ascii_width = len(david_ascii.split("\n")[0])
-
-                # Re-centre the ascii by padding
-                centre = floor((ascii_max_width  - ascii_width)/2)
-                print_ascii = "\n".join([" "*centre + line for line in david_ascii.split("\n")])
-
-            # Print the ascii
-            stdscr.addstr(print_ascii)
+        # Draw the state
+        # Curses always fails when drawing, so we need to catch the exception
+        try:
+            state.draw()
         except:
             pass
 

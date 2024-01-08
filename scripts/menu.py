@@ -2,10 +2,10 @@ import curses
 from math import floor
 
 class Menu():
-    def __init__(self, stdscr, items, functions, default_col, highlight_col):
+    def __init__(self, stdscr, items, states, default_col, highlight_col):
         self.stdscr = stdscr
         self.items = items
-        self.functions = functions
+        self.states = states
         self.cols = 0
         self.rows = 0
         self.selection = 0
@@ -45,6 +45,11 @@ class Menu():
                 self.selection = self.cols * self.rows + self.selection
             if self.selection >= len(self.items):
                 self.selection = len(self.items) - 1
+
+        if self.get_key(key, curses.KEY_ENTER):
+            return self.states[self.selection]
+
+        return None
 
     def draw(self):
         """Draw the menu"""
