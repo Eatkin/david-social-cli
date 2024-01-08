@@ -23,7 +23,12 @@ class Menu():
 
     def draw(self):
         """Draw the menu"""
+        # Reset rows
+        self.rows = 0
+        # Get the height and width of the terminal
         height, width = curses.initscr().getmaxyx()
+
+        # Define the coordinates of the menu items
         coords = []
         current_width = 0
         for item in self.items:
@@ -36,8 +41,9 @@ class Menu():
                 # Append this before adjusting the width
                 centre = round((self.longest_item - len(item))/2)
                 coords.append((current_width + centre, self.rows))
-                # Consistent spacing
-                current_width += self.longest_item + 1
+
+            # Consistent spacing
+            current_width += self.longest_item + 1
 
         # Set initial drawing coordinates
         x = 0

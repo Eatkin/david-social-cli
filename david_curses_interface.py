@@ -4,12 +4,12 @@ import atexit
 import curses
 from curses import wrapper
 from datetime import datetime
-from time import sleep
 from math import floor
 import scripts.env_utils as eu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
 from scripts.feed_utils import print_feed
+from scripts.menu import Menu
 
 """
 TODO: Create a Menu class instead of what I'm doing now
@@ -104,52 +104,6 @@ def print_ticker(stdscr, text, ticker_x):
 
     return ticker_x
 
-def update_menu(stdscr, items):
-    """Prints menu items and handles inputs"""
-    # Just need to print the menu items
-    # Get the Terminal size
-    HEIGHT, WIDTH = curses.initscr().getmaxyx()
-    longest_item = max(items, key=len)
-    longest_item = len(longest_item)
-    # Set the coordinates of the menu items
-    # These will be tuples giving x/y offests
-    coords = []
-    rows = 0
-    current_width = 0
-    for item in items:
-        if current_width + longest_item + 1 > WIDTH:
-            current_width = 0
-            rows += 1
-            centre = round((longest_item - len(item))/2)
-            coords.append((current_width + centre, rows))
-        else:
-            # Append this before adjusting the width
-            centre = round((longest_item - len(item))/2)
-            coords.append((current_width + centre, rows))
-            # Consistent spacing
-            current_width += longest_item + 1
-
-    x = 0
-    y = HEIGHT - rows - 1
-
-    # Blank the rows
-    for row in range(y, HEIGHT):
-        clear_row(stdscr, row)
-
-    # Print the menu items
-    for item in items:
-        x_offset, y_offset = coords.pop(0)
-        col = HIGHLIGHT if sum(MENU_SELECTION) == items.index(item) else WHITE_BLACK
-        stdscr.addstr(y + y_offset, x + x_offset, item, col)
-
-    # Now handle some menu navigation
-    # We know how many rows and columns we have so we can wrap and stuff
-
-    # Return the height of the menu
-    return rows
-
-
-
 def main(stdscr):
     """Main function"""
     # Initialise curses
@@ -166,11 +120,11 @@ def main(stdscr):
     curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLACK)
     global WHITE_BLACK
     WHITE_BLACK = curses.color_pair(3)
-    # Menuing
-    global MENU_SELECTION
-    MENU_SELECTION = (0, 0)
 
-    menu_rows = 0
+    # Instantiate the menu object
+    # Set up some arbitrary menu items
+    menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", "fdsiOFA", "fds", "FDSfdoihfdsa"]
+    menu = Menu(stdscr, menu_items, [], WHITE_BLACK, HIGHLIGHT)
 
     curses.curs_set(0)
     stdscr.clear()
@@ -214,8 +168,6 @@ def main(stdscr):
     ticker_update_rate = 0.2
     t = datetime.now()
 
-    # Set up some arbitrary menu items
-    menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", "fdsiOFA", "fds", "FDSfdoihfdsa"]
     # Main loop
     while True:
         # Update the terminal size
@@ -242,7 +194,7 @@ def main(stdscr):
         # Detect Terminal resize
         new_max_height, new_max_width = curses.initscr().getmaxyx()
 
-        new_max_height -= menu_rows + 1
+        new_max_height -= menu.get_rows() + 1
 
         try:
             if new_max_height != ascii_max_height or new_max_width != ascii_max_width:
@@ -256,7 +208,7 @@ def main(stdscr):
                 ascii_height = len(david_ascii.split("\n"))
                 if ascii_max_height != ascii_height or ascii_max_width != ascii_width:
                     # Re-generate the ascii
-                    david_ascii = get_david_logo_ascii(dim_adjust=(0, menu_rows + 1))
+                    david_ascii = get_david_logo_ascii(dim_adjust=(0, menu.get_rows() + 1))
 
                 # Redefine the ascii width (we want the width without padding)
                 ascii_width = len(david_ascii.split("\n")[0])
@@ -272,7 +224,7 @@ def main(stdscr):
 
         # Print menu
         try:
-            menu_rows = update_menu(stdscr, menu_items)
+            menu.draw()
         except:
             pass
 
