@@ -13,6 +13,7 @@ from scripts.feed_utils import print_feed
 
 """
 TODO: Create a Menu class instead of what I'm doing now
+TODO: Create a git branch so I don't fuck everything up lol
 TODO: Kill myself
 TODO: Menu navigation
 TODO: Menu lambda functions
