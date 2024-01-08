@@ -105,6 +105,7 @@ def print_ticker(stdscr, text, ticker_x):
     return ticker_x
 
 
+"""States"""
 class StateMain():
     def __init__(self, args_dict):
         stdscr = args_dict['stdscr']
@@ -170,8 +171,6 @@ class StateMain():
         logging.info('cleaning up StateMain stuff')
 
     def draw(self):
-        self.stdscr.clear()
-        curses.curs_set(0)
         self.ticker_x = print_ticker(self.stdscr, self.ticker_text, self.ticker_x)
         dt = datetime.now() - self.t
         if dt.total_seconds() > self.ticker_update_rate:
@@ -190,13 +189,36 @@ class StateMain():
         # Print the ascii
         self.stdscr.addstr(self.print_ascii)
 
+class StateExit():
+    def __init__(self, args_dict):
+        logging.info('initialising StateExit')
+        self.stdscr = args_dict['stdscr']
+        self.countdown = 3
+        self.t = datetime.now()
 
+    def update(self, args_dict):
+        dt = datetime.now() - self.t
+        self.countdown -= dt.total_seconds()
+        self.t = datetime.now()
+        if self.countdown <= 0:
+            exit(0)
+
+    def draw(self):
+        self.stdscr.addstr("Goodbye!\n")
+
+    def cleanup(self):
+        logging.info('cleaning up StateExit stuff')
+
+def change_state(state, new_state, args_dict):
+    """Changes the state"""
+    state.cleanup()
+    del state
+    return new_state(args_dict)
 
 def main(stdscr):
     """Main function"""
     # Initialise curses
     stdscr = curses.initscr()
-
 
     # Constants
     # Colours - these MUST be globals because of some curses shit idk
@@ -212,8 +234,10 @@ def main(stdscr):
 
     # Instantiate the menu object
     # Set up some arbitrary menu items
-    menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", "fdsiOFA", "fds", "FDSfdoihfdsa"]
-    menu = Menu(stdscr, menu_items, [], WHITE_BLACK, HIGHLIGHT)
+    menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
+    menu_states = [StateExit, StateExit, StateExit, StateExit, StateExit, StateExit]
+
+    menu = Menu(stdscr, menu_items, menu_states, WHITE_BLACK, HIGHLIGHT)
 
     curses.curs_set(0)
     stdscr.clear()
@@ -241,9 +265,10 @@ def main(stdscr):
         'session': session,
     }
 
+    # Instantiate the state
     state = StateMain(instantiate_args)
 
-    # Main loop
+    """Main loop"""
     while True:
         # Set up arguments
         instantiate_args = {}
@@ -262,6 +287,8 @@ def main(stdscr):
 
         # Draw the state
         # Curses always fails when drawing, so we need to catch the exception
+        stdscr.clear()
+        curses.curs_set(0)
         try:
             state.draw()
         except:
@@ -269,8 +296,11 @@ def main(stdscr):
 
         # Menuing
         try:
-            menu.update()
+            new_state = menu.update()
             menu.draw()
+            if new_state is not None:
+                logging.info(f"Changing state to {new_state}")
+                state = change_state(state, new_state, {'stdscr': stdscr})
         except:
             pass
 

@@ -27,6 +27,7 @@ class Menu():
         """Navigation with curses"""
         self.stdscr.nodelay(True)
         key = self.stdscr.getch()
+
         # Jank ass way of getting input lmao
         hinput = self.get_key(key, curses.KEY_RIGHT) - self.get_key(key, curses.KEY_LEFT)
         vinput = self.get_key(key, curses.KEY_DOWN) - self.get_key(key, curses.KEY_UP)
@@ -46,7 +47,7 @@ class Menu():
             if self.selection >= len(self.items):
                 self.selection = len(self.items) - 1
 
-        if self.get_key(key, curses.KEY_ENTER):
+        if key == curses.KEY_ENTER or key == 10 or key == 13:
             return self.states[self.selection]
 
         return None
