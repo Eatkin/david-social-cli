@@ -14,7 +14,7 @@ from scripts.menu import Menu
 
 """
 TODO: Kill myself
-TODO: Make ticker class object
+TODO: Pass menu object to states so they can use it and update as necessary
 TODO: Make ascii image class object
 TODO: Make a colours enum?? idk
 TODO: Stuff
@@ -103,10 +103,66 @@ def print_ticker(stdscr, text, ticker_x):
 
     return ticker_x
 
+"""Classes"""
+class Ticker():
+    """Ticker class"""
+    def __init__(self, stdscr):
+        _, width = curses.initscr().getmaxyx()
+        self.stdscr = stdscr
+        self.text = david_api.query_api("get-ticker-text")
+        self.ticker_x = 0
+        self.ticker_spacing = max(round(width * 0.2), 2)
+        self.t = datetime.now()
+        self.ticker = self.text
+        self.ticker_update_rate = 0.2
+
+    def update_ticker(self):
+        """Get new ticker text from the API"""
+        self.text = david_api.query_api("get-ticker-text")
+
+    def update(self):
+        """Updates the ticker text"""
+        _, width = curses.initscr().getmaxyx()
+        # Update spacing basedd on Terminal width
+        self.ticker_spacing = max(round(width * 0.2), 2)
+
+        # Update the ticker text position
+        dt = datetime.now() - self.t
+        if dt.total_seconds() > self.ticker_update_rate:
+            self.t = datetime.now()
+            self.ticker_x += 1
+
+        # Wrap ticker_x
+        if self.ticker_x >= len(self.text) + self.ticker_spacing:
+            self.ticker_x = 0
+
+        # Update the actual text to display
+        self.ticker = list(self.text) + list(" " * self.ticker_spacing) + list(self.text)
+        # Add enough repeats of the ticker text to fill the screen
+        while len(self.ticker) < width * 2:
+            self.ticker = self.ticker + list(" " * self.ticker_spacing) + self.ticker
+
+        # Slice the ticker text to fit the screen
+        self.ticker = self.ticker[self.ticker_x:self.ticker_x + width - 1]
+
+        # Join the ticker back into a string
+        self.ticker = "".join(self.ticker)
+
+
+    def draw(self):
+        """Prints the ticker text with scrolling"""
+        # Print the ticker with a colour pair
+        self.stdscr.addstr(self.ticker, curses.A_ITALIC | YELLOW_BLACK)
+
 
 """States"""
-class StateMain():
+# Parent class
+class State():
+    pass
+
+class StateMain(State):
     def __init__(self, args_dict):
+        """Initialise the state"""
         stdscr = args_dict['stdscr']
         session = args_dict['session']
         self.stdscr = stdscr
@@ -128,21 +184,20 @@ class StateMain():
         self.session = session
 
         # Ticker
-        self.ticker_text = david_api.query_api("get-ticker-text")
-        if self.ticker_text is None:
-            self.ticker_text = "Ticker unavailable"
+        self.ticker = Ticker(self.stdscr)
 
-        self.ticker_x = 0
-        self.ticker_update_rate = 0.2
-        self.t = datetime.now()
         self.menu_rows = 1
 
 
     def update(self, args_dict):
+        """Update the state"""
         curses.update_lines_cols()
         self.menu_rows = args_dict['menu_rows']
+        # Update the ticker
+        self.ticker.update()
 
     def update_ascii(self):
+        """Update ascii to fit the terminal"""
         # Get any new ascii dims
         new_max_height, new_max_width = curses.initscr().getmaxyx()
         new_max_height -= self.menu_rows + 1
@@ -167,14 +222,15 @@ class StateMain():
         new_max_height -= self.menu_rows + 1
 
     def cleanup(self):
+        """Clean up the state"""
         logging.info('cleaning up StateMain stuff')
+        # Delete the ticker object
+        del self.ticker
 
     def draw(self):
-        self.ticker_x = print_ticker(self.stdscr, self.ticker_text, self.ticker_x)
-        dt = datetime.now() - self.t
-        if dt.total_seconds() > self.ticker_update_rate:
-            self.t = datetime.now()
-            self.ticker_x += 1
+        """Draw the state"""
+        # Print the ticker
+        self.ticker.draw()
 
         self.stdscr.addstr("\n")
         welcome_message = f"Welcome to David Social version {self.version}!"
@@ -188,14 +244,16 @@ class StateMain():
         # Print the ascii
         self.stdscr.addstr(self.print_ascii)
 
-class StateExit():
+class StateExit(State):
     def __init__(self, args_dict):
+        """Initialise the state"""
         logging.info('initialising StateExit')
         self.stdscr = args_dict['stdscr']
         self.countdown = 3
         self.t = datetime.now()
 
     def update(self, args_dict):
+        """Update the state, countdown to exit"""
         dt = datetime.now() - self.t
         self.countdown -= dt.total_seconds()
         self.t = datetime.now()
@@ -203,9 +261,11 @@ class StateExit():
             exit(0)
 
     def draw(self):
+        """Draw the state"""
         self.stdscr.addstr("Goodbye!\n")
 
     def cleanup(self):
+        """Clean up the state"""
         logging.info('cleaning up StateExit stuff')
 
 def change_state(state, new_state, args_dict):
@@ -296,14 +356,17 @@ def main(stdscr):
 
         # Menuing
         try:
-            new_state = menu.update()
+            function = menu.update()
             menu.draw()
             # I am in hell
             # I try to be a good programmer
             # And everything is just hell
-            if new_state is not None:
-                logging.info(f"Changing state to {new_state}")
-                state = change_state(state, new_state, {'stdscr': stdscr})
+            if function is not None:
+                if issubclass(function, State):
+                    logging.info(f"Changing state to {function}")
+                    state = change_state(state, function, {'stdscr': stdscr})
+                else:
+                    function()
         except:
             pass
 
