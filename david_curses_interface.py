@@ -16,10 +16,9 @@ from scripts.colours import ColourConstants
 """
 TODO: Kill myself
 TODO: Pass menu object to states so they can use it and update as necessary
+TODO: Right now it's being updated in main which is kinda dumb cause the states need to update them as necessary
 TODO: Move states to their own files and import them here, update them to incldue the logger
 TODO: Why does pressing escape pause everything?
-TODO: Why does pressing ctrl+C remove the ascii image?
-TODO: Ascii image regenerates every update due to detecting it is too big to fit for some reason
 TODO: Stuff
 TODO: More stuff
 TODO: Even more stuff
@@ -126,10 +125,10 @@ class StateMain(State):
         new_max_height, new_max_width = curses.initscr().getmaxyx()
         new_max_height -= self.menu_rows + 1
 
-        ascii_width, ascii_height = self.david_ascii.get_dims()
+        ascii_height, ascii_width = self.david_ascii.get_dims()
 
         # Make sure the ascii is not too big for the available space
-        if ascii_width > new_max_width or ascii_height > new_max_height:
+        if ascii_width != new_max_width or ascii_height != new_max_height:
             # Resize the ascii
             del self.david_ascii
             self.generate_david_ascii()
