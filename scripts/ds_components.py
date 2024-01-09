@@ -164,13 +164,31 @@ class AsciiImage():
         """Initialise the ascii image"""
         self.stdscr = stdscr
         self.image_url = image_path
-        self.ascii = su.image_to_ascii(image_path, url=False, dim_adjust=dim_adjust)
-
-        # Save the dim adjust
+        self.url = url
+        self.ascii = None
+        self.centre = centre
         self.dim_adjust = dim_adjust
 
+        # Dimemsion adjustment
+        self.max_width = 0
+        self.max_height = 0
+
+        # Initial image generation
+        self.generate_image()
+
+
+    def generate_image(self):
+        """Generate the ascii image"""
+        # Set the max width and height
+        self.max_height, self.max_width = curses.initscr().getmaxyx()
+
+        # Delete ascii if it exists
+        if self.ascii:
+            del self.ascii
+
+        self.ascii = su.image_to_ascii(self.image_url, self.url, dim_adjust=self.dim_adjust)
         # Centre the ascii image if required
-        if centre:
+        if self.centre:
             # Get the width of the ascii image
             ascii_width = len(self.ascii.split("\n")[0])
             # Get the width of the terminal
@@ -180,8 +198,22 @@ class AsciiImage():
             self.ascii = "\n".join([" "*centre + line for line in self.ascii.split("\n")])
 
     def get_dims(self):
-        """Return width and height of the ascii image"""
-        return len(self.ascii.split("\n")), len(self.ascii.split("\n")[0])
+        return len(self.ascii.split("\n")) - self.dim_adjust[1], len(self.ascii.split("\n")[0]) - self.dim_adjust[0]
+
+    def set_dim_adjust(self, dim_adjust):
+        """Set the dimension adjustment"""
+        self.dim_adjust = dim_adjust
+
+    def update(self):
+        """Check if the image requires updating due to terminal resize"""
+        # Get terminal size
+        t_height, t_width = curses.initscr().getmaxyx()
+        # Check if the terminal size has changed
+        if t_height != self.max_height or t_width != self.max_width:
+            self.generate_image()
+            # Update
+            self.max_height = t_height
+            self.max_width = t_width
 
     def draw(self):
         """Draw the ascii image"""

@@ -126,36 +126,16 @@ class StateMain(State):
         """Update ascii to fit the terminal"""
         # We need to generate the ascii if it doesn't exist
         # This makes sure it is generated with the correct dimensions (accounting for menu)
+        # If we generate it initially it will be generated with the wrong dimensions
         if self.david_ascii is None:
             self.generate_david_ascii()
             return
 
-        # Get any new ascii dims
-        new_max_height, new_max_width = curses.initscr().getmaxyx()
-        # The convert to ascii image method takes 1 off the width for some reason (otherwise Curses explodes)
-        new_max_width -= 1
+        # Pass the new dimensions to the ascii object
+        self.david_ascii.set_dim_adjust((0, self.menu_rows + 1))
 
-        # Account for dim adjustments
-        # These are (width, height) tuples, whereas everything else is (height, width)
-        # Because I am a bad programmer
-        new_max_height -= self.david_ascii.dim_adjust[1]
-        new_max_width -= self.david_ascii.dim_adjust[0]
-
-        # Get the current ascii dims
-        height, width = self.david_ascii.get_dims()
-
-
-        # Fill as much space as possible without overflow
-        resize = False
-        if width != new_max_width and height != new_max_height:
-            resize = True
-        elif width > new_max_width or height > new_max_height:
-            resize = True
-        # If the terminal has been resized, regenerate the ascii
-        if resize:
-            del self.david_ascii
-            self.generate_david_ascii()
-
+        # Use the ascii image's update function
+        self.david_ascii.update()
 
 
     def cleanup(self):
@@ -163,6 +143,8 @@ class StateMain(State):
         logging.info('cleaning up StateMain stuff')
         # Delete the ticker object
         del self.ticker
+        # Delete the ascii object
+        del self.david_ascii
 
     def draw(self):
         """Draw the state"""
