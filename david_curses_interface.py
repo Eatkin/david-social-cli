@@ -71,38 +71,6 @@ def clear_row(stdscr, row):
     _, width = curses.initscr().getmaxyx()
     stdscr.addstr(row, 0, " " * (width - 1), WHITE_BLACK)
 
-def get_david_logo_ascii(dim_adjust=(0, 0)):
-    """Returns ascii art of the David Social logo"""
-    # Print out this very cool David Social logo
-    david_logo = os.path.join(os.path.dirname(__file__), "assets/david.png")
-    david_ascii = su.image_to_ascii(david_logo, url=False, dim_adjust=dim_adjust)
-    return david_ascii
-
-def print_ticker(stdscr, text, ticker_x):
-    """Prints the ticker text with scrolling"""
-    _, width = curses.initscr().getmaxyx()
-    ticker_spacing = round(width * 0.2)
-    # Print the ticker with ticker_x being the offset by exploding it into a list
-    # We need to AT least double the ticker text so it can scroll seamlessly for example if text is very long
-    ticker = list(text) + list(" " * ticker_spacing) + list(text)
-    # Add enough repeats of the ticker text to fill the screen
-    while len(ticker) < width * 2:
-        ticker = ticker + list(" " * ticker_spacing) + ticker
-
-    # Slice the ticker text to fit the screen
-    ticker = ticker[ticker_x:ticker_x + width - 1]
-
-    # Join the ticker back into a string
-    ticker = "".join(ticker)
-    # Print the ticker with a colour pair
-    stdscr.addstr(ticker, curses.A_ITALIC | YELLOW_BLACK)
-
-    # Wrap ticker_x
-    if ticker_x >= len(text) + ticker_spacing:
-        ticker_x = 0
-
-    return ticker_x
-
 """Classes"""
 class Ticker():
     """Ticker class"""
@@ -154,6 +122,32 @@ class Ticker():
         # Print the ticker with a colour pair
         self.stdscr.addstr(self.ticker, curses.A_ITALIC | YELLOW_BLACK)
 
+class AsciiImage():
+    """Ascii image class"""
+    def __init__(self, stdscr, image_path, url, centre=True, dim_adjust=(0, 0)):
+        """Initialise the ascii image"""
+        self.stdscr = stdscr
+        self.image_url = image_path
+        self.ascii = su.image_to_ascii(image_path, url=False, dim_adjust=dim_adjust)
+
+        # Centre the ascii image if required
+        if centre:
+            # Get the width of the ascii image
+            ascii_width = len(self.ascii.split("\n")[0])
+            # Get the width of the terminal
+            _, max_width = curses.initscr().getmaxyx()
+            # Centre the ascii image
+            centre = floor((max_width - ascii_width)/2)
+            self.ascii = "\n".join([" "*centre + line for line in self.ascii.split("\n")])
+
+    def get_dims(self):
+        """Return width and height of the ascii image"""
+        return len(self.ascii.split("\n")), len(self.ascii.split("\n")[0])
+
+    def draw(self):
+        """Draw the ascii image"""
+        self.stdscr.addstr(self.ascii)
+
 
 """States"""
 # Parent class
@@ -167,14 +161,7 @@ class StateMain(State):
         session = args_dict['session']
         self.stdscr = stdscr
         # Set up the david ascii art
-        self.david_ascii = get_david_logo_ascii()
-        self.ascii_width = len(self.david_ascii.split("\n")[0])
-        centre = floor((curses.COLS - self.ascii_width)/2)
-        # Centre the ascii art
-        self.print_ascii = "\n".join([" "*centre + line for line in self.david_ascii.split("\n")])
-
-        # Ascii dims
-        self.ascii_max_height, self.ascii_max_width = self.stdscr.getmaxyx()
+        self.david_logo = os.path.join(os.path.dirname(__file__), "assets/david.png")
 
         # Get the version
         self.version = david_api.query_api("version")
@@ -188,6 +175,12 @@ class StateMain(State):
 
         self.menu_rows = 1
 
+        self.generate_david_ascii()
+
+    def generate_david_ascii(self):
+        """Generate the ascii art"""
+        # Get the ascii art
+        self.david_ascii = AsciiImage(self.stdscr, self.david_logo, url=False, centre=True, dim_adjust=(0, self.menu_rows + 1))
 
     def update(self, args_dict):
         """Update the state"""
@@ -202,24 +195,13 @@ class StateMain(State):
         new_max_height, new_max_width = curses.initscr().getmaxyx()
         new_max_height -= self.menu_rows + 1
 
-        if new_max_height != self.ascii_max_height or new_max_width != self.ascii_max_width:
-            self.ascii_max_height, self.ascii_max_width = new_max_height, new_max_width
-            # Regenerate ascii at new size
-            # First check if this is necessary
-            ascii_width = len(self.print_ascii.split("\n")[0])
-            ascii_height = len(self.david_ascii.split("\n"))
-            if self.ascii_max_height != ascii_height or self.ascii_max_width != ascii_width:
-                # Re-generate the ascii
-                self.david_ascii = get_david_logo_ascii(dim_adjust=(0, self.menu_rows + 1))
+        ascii_width, ascii_height = self.david_ascii.get_dims()
 
-            # Redefine the ascii width (we want the width without padding)
-            ascii_width = len(self.david_ascii.split("\n")[0])
-
-            # Re-centre the ascii by padding
-            centre = floor((self.ascii_max_width  - ascii_width)/2)
-            self.print_ascii = "\n".join([" "*centre + line for line in self.david_ascii.split("\n")])
-
-        new_max_height -= self.menu_rows + 1
+        # Make sure the ascii is not too big for the available space
+        if ascii_width > new_max_width or ascii_height > new_max_height:
+            # Resize the ascii
+            del self.david_ascii
+            self.generate_david_ascii()
 
     def cleanup(self):
         """Clean up the state"""
@@ -240,9 +222,10 @@ class StateMain(State):
         centre = round((max_width - len(welcome_message))/2)
         self.stdscr.addstr(" "*centre + welcome_message + "\n")
 
+        # Call update ascii here because we know the available space
         self.update_ascii()
         # Print the ascii
-        self.stdscr.addstr(self.print_ascii)
+        self.david_ascii.draw()
 
 class StateExit(State):
     def __init__(self, args_dict):
