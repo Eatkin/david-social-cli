@@ -10,13 +10,16 @@ import scripts.env_utils as eu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
 from scripts.feed_utils import print_feed
-from scripts.menu import Menu
+from scripts.ds_components import Menu, Ticker, AsciiImage
+from scripts.colours import ColourConstants
 
 """
 TODO: Kill myself
 TODO: Pass menu object to states so they can use it and update as necessary
-TODO: Make ascii image class object
-TODO: Make a colours enum?? idk
+TODO: Move states to their own files and import them here, update them to incldue the logger
+TODO: Why does pressing escape pause everything?
+TODO: Why does pressing ctrl+C remove the ascii image?
+TODO: Ascii image regenerates every update due to detecting it is too big to fit for some reason
 TODO: Stuff
 TODO: More stuff
 TODO: Even more stuff
@@ -36,6 +39,10 @@ TODO: Resurrect myself
 TODO: Work on David Social CLI
 """
 
+# Initialise the colours
+colours = ColourConstants()
+colours.init_colours()
+
 # Set up logging
 def logging_init():
     """Createss a logfile with the current date and time"""
@@ -46,9 +53,10 @@ def logging_init():
     filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
     logging.basicConfig(filename=filename, level=logging.DEBUG, encoding="utf-8")
     print(f"Logging to {filename}")
-    return filename
+    logger = logging.getLogger()
+    return filename, logger
 
-LOGFILE = logging_init()
+LOGFILE, LOGGER = logging_init()
 
 def cleanup():
     """Cleanup curses and remove logfile if there are no logs"""
@@ -69,84 +77,7 @@ def login():
 def clear_row(stdscr, row):
     """Blank out the specified row"""
     _, width = curses.initscr().getmaxyx()
-    stdscr.addstr(row, 0, " " * (width - 1), WHITE_BLACK)
-
-"""Classes"""
-class Ticker():
-    """Ticker class"""
-    def __init__(self, stdscr):
-        _, width = curses.initscr().getmaxyx()
-        self.stdscr = stdscr
-        self.text = david_api.query_api("get-ticker-text")
-        self.ticker_x = 0
-        self.ticker_spacing = max(round(width * 0.2), 2)
-        self.t = datetime.now()
-        self.ticker = self.text
-        self.ticker_update_rate = 0.2
-
-    def update_ticker(self):
-        """Get new ticker text from the API"""
-        self.text = david_api.query_api("get-ticker-text")
-
-    def update(self):
-        """Updates the ticker text"""
-        _, width = curses.initscr().getmaxyx()
-        # Update spacing basedd on Terminal width
-        self.ticker_spacing = max(round(width * 0.2), 2)
-
-        # Update the ticker text position
-        dt = datetime.now() - self.t
-        if dt.total_seconds() > self.ticker_update_rate:
-            self.t = datetime.now()
-            self.ticker_x += 1
-
-        # Wrap ticker_x
-        if self.ticker_x >= len(self.text) + self.ticker_spacing:
-            self.ticker_x = 0
-
-        # Update the actual text to display
-        self.ticker = list(self.text) + list(" " * self.ticker_spacing) + list(self.text)
-        # Add enough repeats of the ticker text to fill the screen
-        while len(self.ticker) < width * 2:
-            self.ticker = self.ticker + list(" " * self.ticker_spacing) + self.ticker
-
-        # Slice the ticker text to fit the screen
-        self.ticker = self.ticker[self.ticker_x:self.ticker_x + width - 1]
-
-        # Join the ticker back into a string
-        self.ticker = "".join(self.ticker)
-
-
-    def draw(self):
-        """Prints the ticker text with scrolling"""
-        # Print the ticker with a colour pair
-        self.stdscr.addstr(self.ticker, curses.A_ITALIC | YELLOW_BLACK)
-
-class AsciiImage():
-    """Ascii image class"""
-    def __init__(self, stdscr, image_path, url, centre=True, dim_adjust=(0, 0)):
-        """Initialise the ascii image"""
-        self.stdscr = stdscr
-        self.image_url = image_path
-        self.ascii = su.image_to_ascii(image_path, url=False, dim_adjust=dim_adjust)
-
-        # Centre the ascii image if required
-        if centre:
-            # Get the width of the ascii image
-            ascii_width = len(self.ascii.split("\n")[0])
-            # Get the width of the terminal
-            _, max_width = curses.initscr().getmaxyx()
-            # Centre the ascii image
-            centre = floor((max_width - ascii_width)/2)
-            self.ascii = "\n".join([" "*centre + line for line in self.ascii.split("\n")])
-
-    def get_dims(self):
-        """Return width and height of the ascii image"""
-        return len(self.ascii.split("\n")), len(self.ascii.split("\n")[0])
-
-    def draw(self):
-        """Draw the ascii image"""
-        self.stdscr.addstr(self.ascii)
+    stdscr.addstr(row, 0, " " * (width - 1), colours.WHITE_BLACK)
 
 
 """States"""
@@ -262,24 +193,12 @@ def main(stdscr):
     # Initialise curses
     stdscr = curses.initscr()
 
-    # Constants
-    # Colours - these MUST be globals because of some curses shit idk
-    curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-    global YELLOW_BLACK
-    YELLOW_BLACK = curses.color_pair(1)
-    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
-    global HIGHLIGHT
-    HIGHLIGHT = curses.color_pair(2)
-    curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLACK)
-    global WHITE_BLACK
-    WHITE_BLACK = curses.color_pair(3)
-
     # Instantiate the menu object
     # Set up some arbitrary menu items
     menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
     menu_states = [StateExit, StateExit, StateExit, StateExit, StateExit, StateExit]
 
-    menu = Menu(stdscr, menu_items, menu_states, WHITE_BLACK, HIGHLIGHT)
+    menu = Menu(stdscr, menu_items, menu_states, colours.WHITE_BLACK, colours.HIGHLIGHT)
 
     curses.curs_set(0)
     stdscr.clear()
