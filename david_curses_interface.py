@@ -108,7 +108,7 @@ class StateMain(State):
 
         self.menu_rows = 1
 
-        self.generate_david_ascii()
+        self.david_ascii = None
 
     def generate_david_ascii(self):
         """Generate the ascii art"""
@@ -124,20 +124,39 @@ class StateMain(State):
 
     def update_ascii(self):
         """Update ascii to fit the terminal"""
+        # We need to generate the ascii if it doesn't exist
+        # This makes sure it is generated with the correct dimensions (accounting for menu)
+        if self.david_ascii is None:
+            self.generate_david_ascii()
+            return
+
         # Get any new ascii dims
-        curses.curs_set(0)
         new_max_height, new_max_width = curses.initscr().getmaxyx()
-        new_max_height -= (self.menu_rows + 1)
+        # The convert to ascii image method takes 1 off the width for some reason (otherwise Curses explodes)
+        new_max_width -= 1
 
-        ascii_height, ascii_width = self.david_ascii.get_dims()
+        # Account for dim adjustments
+        # These are (width, height) tuples, whereas everything else is (height, width)
+        # Because I am a bad programmer
+        new_max_height -= self.david_ascii.dim_adjust[1]
+        new_max_width -= self.david_ascii.dim_adjust[0]
 
-        # Maximum ascii size to fill space
-        if ascii_width != new_max_width and ascii_height != new_max_height:
-            logging.info(f"Menu rows: {self.menu_rows}")
-            logging.info(f"Resizing ascii to {new_max_width}x{new_max_height} from {ascii_width}x{ascii_height}")
-            # Resize the ascii
+        # Get the current ascii dims
+        height, width = self.david_ascii.get_dims()
+
+
+        # Fill as much space as possible without overflow
+        resize = False
+        if width != new_max_width and height != new_max_height:
+            resize = True
+        elif width > new_max_width or height > new_max_height:
+            resize = True
+        # If the terminal has been resized, regenerate the ascii
+        if resize:
             del self.david_ascii
             self.generate_david_ascii()
+
+
 
     def cleanup(self):
         """Clean up the state"""

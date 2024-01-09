@@ -166,6 +166,9 @@ class AsciiImage():
         self.image_url = image_path
         self.ascii = su.image_to_ascii(image_path, url=False, dim_adjust=dim_adjust)
 
+        # Save the dim adjust
+        self.dim_adjust = dim_adjust
+
         # Centre the ascii image if required
         if centre:
             # Get the width of the ascii image
