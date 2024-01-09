@@ -5,6 +5,7 @@ import curses
 from curses import wrapper
 from datetime import datetime
 from math import floor
+from time import sleep
 import scripts.env_utils as eu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
@@ -13,11 +14,9 @@ from scripts.menu import Menu
 
 """
 TODO: Kill myself
-TODO: Menu functionality, the menu is passed a list of states and returns the selected state
-TODO: Set up state machine
-TODO: The state machine is shit, should make class objects for each state
-TODO: Then we can have init and update
-TODO: That's going to be really fucking annoying
+TODO: Make ticker class object
+TODO: Make ascii image class object
+TODO: Make a colours enum?? idk
 TODO: Stuff
 TODO: More stuff
 TODO: Even more stuff
@@ -252,8 +251,9 @@ def main(stdscr):
 
     # If DS is down we won't get a version
     if ping is None:
-        stdscr.addstr("Oh no, David Social is down!! How will we ever survive? :(")
+        stdscr.addstr("Oh no, David Social is down!! :(")
         stdscr.refresh()
+        sleep(3)
         exit(1)
 
     # Should probably actually login
@@ -298,6 +298,9 @@ def main(stdscr):
         try:
             new_state = menu.update()
             menu.draw()
+            # I am in hell
+            # I try to be a good programmer
+            # And everything is just hell
             if new_state is not None:
                 logging.info(f"Changing state to {new_state}")
                 state = change_state(state, new_state, {'stdscr': stdscr})
