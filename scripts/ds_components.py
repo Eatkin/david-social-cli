@@ -5,9 +5,6 @@ from scripts.colours import ColourConstants
 import scripts.api_routes as david_api
 import scripts.string_utils as su
 
-# Initialise the colour constants
-colours = ColourConstants()
-colours.init_colours()
 
 class Menu():
     def __init__(self, stdscr, items, states, default_col, highlight_col):
@@ -111,6 +108,9 @@ class Menu():
 class Ticker():
     """Ticker class"""
     def __init__(self, stdscr):
+        # Initialise the colour constants
+        self.colours = ColourConstants()
+        self.colours.init_colours()
         _, width = curses.initscr().getmaxyx()
         self.stdscr = stdscr
         self.text = david_api.query_api("get-ticker-text")
@@ -156,7 +156,7 @@ class Ticker():
     def draw(self):
         """Prints the ticker text with scrolling"""
         # Print the ticker with a colour pair
-        self.stdscr.addstr(self.ticker, curses.A_ITALIC | colours.YELLOW_BLACK)
+        self.stdscr.addstr(self.ticker, curses.A_ITALIC | self.colours.YELLOW_BLACK)
 
 class AsciiImage():
     """Ascii image class"""

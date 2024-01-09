@@ -2,8 +2,6 @@ import curses
 
 class ColourConstants:
     def __init__(self):
-        curses.initscr()
-        curses.start_color()
         self.YELLOW_BLACK = curses.color_pair(1)
         self.HIGHLIGHT = curses.color_pair(2)
         self.WHITE_BLACK = curses.color_pair(3)

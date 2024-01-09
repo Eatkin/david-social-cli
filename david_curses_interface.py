@@ -38,6 +38,9 @@ TODO: Resurrect myself
 TODO: Work on David Social CLI
 """
 
+# Initialise curses
+stdscr = curses.initscr()
+curses.start_color()
 # Initialise the colours
 colours = ColourConstants()
 colours.init_colours()
@@ -122,13 +125,16 @@ class StateMain(State):
     def update_ascii(self):
         """Update ascii to fit the terminal"""
         # Get any new ascii dims
+        curses.curs_set(0)
         new_max_height, new_max_width = curses.initscr().getmaxyx()
-        new_max_height -= self.menu_rows + 1
+        new_max_height -= (self.menu_rows + 1)
 
         ascii_height, ascii_width = self.david_ascii.get_dims()
 
-        # Make sure the ascii is not too big for the available space
-        if ascii_width != new_max_width or ascii_height != new_max_height:
+        # Maximum ascii size to fill space
+        if ascii_width != new_max_width and ascii_height != new_max_height:
+            logging.info(f"Menu rows: {self.menu_rows}")
+            logging.info(f"Resizing ascii to {new_max_width}x{new_max_height} from {ascii_width}x{ascii_height}")
             # Resize the ascii
             del self.david_ascii
             self.generate_david_ascii()
@@ -189,9 +195,6 @@ def change_state(state, new_state, args_dict):
 
 def main(stdscr):
     """Main function"""
-    # Initialise curses
-    stdscr = curses.initscr()
-
     # Instantiate the menu object
     # Set up some arbitrary menu items
     menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
