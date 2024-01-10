@@ -338,11 +338,15 @@ class Feed():
         # We now have the annoying problem of David 'Intelligence' being inserted into the posts list
         # So basically we need to find the last post in self.posts in the new posts list
         last_post = self.posts[-1]
-        # Find the index of the last post
-        last_post_index = new_posts.index(last_post)
-        # There is an exception if (somehow) we reach the end of the feed
-        if last_post_index == len(new_posts) - 1:
-            # In this case we don't need to do anything
+        # This actually crashes so lazy try except to make sure it doesn't break
+        try:
+            # Find the index of the last post
+            last_post_index = new_posts.index(last_post)
+            # There is an exception if (somehow) we reach the end of the feed
+            if last_post_index == len(new_posts) - 1:
+                # In this case we don't need to do anything
+                return False
+        except:
             return False
         # Now slice the new posts list to get the new posts
         new_posts = new_posts[last_post_index + 1:]
