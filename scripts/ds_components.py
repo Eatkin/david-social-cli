@@ -273,6 +273,8 @@ class Feed():
         # The window is a parameter which we can hold on to if we wish to load more posts
         self.posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
 
+        self.post_index = 0
+
     def get_post(self, index):
         """Get a post from the feed"""
         return self.posts[index]

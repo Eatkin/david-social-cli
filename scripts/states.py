@@ -4,6 +4,7 @@ from enum import Enum
 from datetime import datetime
 from scripts.ds_components import Menu, Ticker, AsciiImage, Feed
 import scripts.api_routes as david_api
+from scripts.colours import ColourConstants
 
 # We need to create a feeds dictionary to store the feed objects so we can save our place in them
 feeds = {}
@@ -43,6 +44,8 @@ class StateMain(State):
         self.stdscr = stdscr
         self.session = session
         self.logger = logger
+
+        self.logger.info('initialising StateMain')
         # Set up the david ascii art
         # Get the path to the david ascii art - first go up a directory, then go into assets
         self.david_logo = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/david.png")
@@ -62,8 +65,13 @@ class StateMain(State):
         self.david_ascii = None
 
         # Initialise the menu
-        menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
-        menu_states = [StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger)]
+        menu_items = ["Bootlicker Feed", "Global Feed", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
+        menu_states = [StateFeed(self.stdscr, self.session, self.logger, "Bootlicker"),
+                       StateFeed(self.stdscr, self.session, self.logger, "Global"),
+                       StateExit(self.stdscr, self.session, self.logger),
+                       StateExit(self.stdscr, self.session, self.logger),
+                       StateExit(self.stdscr, self.session, self.logger),
+                       StateExit(self.stdscr, self.session, self.logger)]
         self.menu = Menu(self.stdscr, menu_items, menu_states)
 
     def generate_david_ascii(self):
@@ -167,21 +175,99 @@ class StateFeed(State):
         self.session = session
         self.logger = logger
 
+        self.logger.info('initialising StateFeed')
+        # This is the name of the user feed we are viewing
+        self.user_feed = user_feed
+
         # Set up the feed
         self.feed_type = feed_type
-        self.feed = Feed(self.session, self.feed_type, user_feed)
+        self.feed_key = FeedType.BOOTLICKER if feed_type == "Bootlicker" else FeedType.GLOBAL if feed_type == "Global" else self.user_feed
+        if self.feed_key in feeds:
+            self.feed = feeds[self.feed_key]
+        else:
+            self.feed = Feed(self.session, self.feed_type, user_feed)
+            # Add our feed to the feeds dictionary
+            feeds[self.feed_key] = self.feed
 
         # Create menu
-        menu_items = []
-        menu_functions = []
+        menu_items = ["Next Post", ]
+        menu_functions = [self.next_post()]
+
+        # If we are not on index 0 of the feed then prepend with "Previous post"
+        if self.feed.post_index != 0:
+            menu_items.insert(0, "Previous Post")
+            menu_functions.insert(0, self.previous_post())
+
         self.menu = Menu(self.stdscr, menu_items, menu_functions)
+
+        self.current_post = self.feed.get_post(self.feed.post_index)
+
+        # Initialise colours
+        self.colours = ColourConstants()
+        self.colours.init_colours()
+
+    # Navigation functions
+    def next_post(self):
+        """Go to the next post"""
+        # TODO: Check if we are at the start or end of feed for menu updating
+        # TODO: Check if there is an attached image for menu updating
+        pass
+
+    def previous_post(self):
+        """Go to the previous post"""
+        # TODO: Check if we are at the start of the feed for menu updating
+        # TODO: Check if there is an attached image for menu updating
+        pass
 
     def update(self):
         """Update the state"""
         # Call the parent update function
         return super().update()
 
+    def draw_post(self):
+        """Draw the current post"""
+        linebreak = "-" * (curses.COLS - 1) + "\n"
+
+        # If this is a David Selection say so
+        if self.current_post['david_selection']:
+            self.stdscr.addstr("*:･ﾟ✧*:･ﾟ✧ David Selection\n", self.colours.HIGHLIGHT)
+            self.stdscr.addstr(linebreak)
+
+        # Username and timestamp
+        timestamp = self.current_post['timestamp']
+        timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+        date_time = timestamp.strftime("%d/%m/%Y %H:%M:%S")
+        self.stdscr.addstr(f"@{self.current_post['username']} posted at {date_time}\n")
+        self.stdscr.addstr(linebreak)
+
+        if self.current_post['image_attached'] != "":
+            self.stdscr.addstr("Image attached, you should look at it! :3\n")
+            self.stdscr.addstr(linebreak)
+
+        # Post content
+        self.stdscr.addstr(f"{self.current_post['content']}\n")
+        self.stdscr.addstr(linebreak)
+
+        # Likes and comments
+        if len(self.current_post['liked_by']) > 0:
+            likers = ", ".join(self.current_post['liked_by'])
+        else:
+            likers = "Nobody, you should be the first! :3"
+        self.stdscr.addstr(f"Liked by: {likers}\n")
+
+        if self.current_post['ncomments'] > 0:
+            commenters = self.current_post['ncomments']
+        else:
+            commenters = "Nobody has replied to this post, you should be the first! :3"
+        if self.current_post['ncomments'] > 0:
+            self.stdscr.addstr(f"{commenters} replies\n")
+
     def draw(self):
         """Draw the state"""
+        # Draw the post
+        self.draw_post()
         # Call the parent draw function
         super().draw()
+
+    def cleanup(self):
+        return super().cleanup()

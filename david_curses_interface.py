@@ -120,7 +120,10 @@ def main(stdscr):
         curses.curs_set(0)
         try:
             state.draw()
-        except:
+        except Exception as e:
+            # Only enable this if you REALLY NEED TO DEBUG
+            # Because otherwise it will print a billion errors
+            # logging.exception(e)
             pass
 
         stdscr.refresh()
