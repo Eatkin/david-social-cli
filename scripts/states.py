@@ -240,7 +240,7 @@ class StateFeed(State):
         self.stdscr.addstr(f"@{self.current_post['username']} posted at {date_time}\n")
         self.stdscr.addstr(linebreak)
 
-        if self.current_post['image_attached'] != "":
+        if self.current_post['attached_image'] != "":
             self.stdscr.addstr("Image attached, you should look at it! :3\n")
             self.stdscr.addstr(linebreak)
 
