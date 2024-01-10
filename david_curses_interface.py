@@ -12,12 +12,10 @@ import scripts.string_utils as su
 from scripts.feed_utils import print_feed
 from scripts.ds_components import Menu, Ticker, AsciiImage
 from scripts.colours import ColourConstants
+from scripts.states import State, StateMain, StateExit
 
 """
 TODO: Kill myself
-TODO: Pass menu object to states so they can use it and update as necessary
-TODO: Right now it's being updated in main which is kinda dumb cause the states need to update them as necessary
-TODO: Move states to their own files and import them here, update them to incldue the logger
 TODO: Why does pressing escape pause everything?
 TODO: Stuff
 TODO: More stuff
@@ -81,128 +79,14 @@ def clear_row(stdscr, row):
     _, width = curses.initscr().getmaxyx()
     stdscr.addstr(row, 0, " " * (width - 1), colours.WHITE_BLACK)
 
-
-"""States"""
-# Parent class
-class State():
-    pass
-
-class StateMain(State):
-    def __init__(self, args_dict):
-        """Initialise the state"""
-        stdscr = args_dict['stdscr']
-        session = args_dict['session']
-        self.stdscr = stdscr
-        # Set up the david ascii art
-        self.david_logo = os.path.join(os.path.dirname(__file__), "assets/david.png")
-
-        # Get the version
-        self.version = david_api.query_api("version")
-        self.version = self.version['version']
-
-        # Session
-        self.session = session
-
-        # Ticker
-        self.ticker = Ticker(self.stdscr)
-
-        self.menu_rows = 1
-
-        self.david_ascii = None
-
-    def generate_david_ascii(self):
-        """Generate the ascii art"""
-        # Get the ascii art
-        self.david_ascii = AsciiImage(self.stdscr, self.david_logo, url=False, centre=True, dim_adjust=(0, self.menu_rows + 1))
-
-    def update(self, args_dict):
-        """Update the state"""
-        curses.update_lines_cols()
-        self.menu_rows = args_dict['menu_rows']
-        # Update the ticker
-        self.ticker.update()
-
-    def update_ascii(self):
-        """Update ascii to fit the terminal"""
-        # We need to generate the ascii if it doesn't exist
-        # This makes sure it is generated with the correct dimensions (accounting for menu)
-        # If we generate it initially it will be generated with the wrong dimensions
-        if self.david_ascii is None:
-            self.generate_david_ascii()
-            return
-
-        # Pass the new dimensions to the ascii object
-        self.david_ascii.set_dim_adjust((0, self.menu_rows + 1))
-
-        # Use the ascii image's update function
-        self.david_ascii.update()
-
-
-    def cleanup(self):
-        """Clean up the state"""
-        logging.info('cleaning up StateMain stuff')
-        # Delete the ticker object
-        del self.ticker
-        # Delete the ascii object
-        del self.david_ascii
-
-    def draw(self):
-        """Draw the state"""
-        # Print the ticker
-        self.ticker.draw()
-
-        self.stdscr.addstr("\n")
-        welcome_message = f"Welcome to David Social version {self.version}!"
-        # Centre the welcome message
-        _, max_width = curses.initscr().getmaxyx()
-        max_width -= 1
-        centre = round((max_width - len(welcome_message))/2)
-        self.stdscr.addstr(" "*centre + welcome_message + "\n")
-
-        # Call update ascii here because we know the available space
-        self.update_ascii()
-        # Print the ascii
-        self.david_ascii.draw()
-
-class StateExit(State):
-    def __init__(self, args_dict):
-        """Initialise the state"""
-        logging.info('initialising StateExit')
-        self.stdscr = args_dict['stdscr']
-        self.countdown = 3
-        self.t = datetime.now()
-
-    def update(self, args_dict):
-        """Update the state, countdown to exit"""
-        dt = datetime.now() - self.t
-        self.countdown -= dt.total_seconds()
-        self.t = datetime.now()
-        if self.countdown <= 0:
-            exit(0)
-
-    def draw(self):
-        """Draw the state"""
-        self.stdscr.addstr("Goodbye!\n")
-
-    def cleanup(self):
-        """Clean up the state"""
-        logging.info('cleaning up StateExit stuff')
-
-def change_state(state, new_state, args_dict):
+def change_state(state, new_state, stdscr, session, logger):
     """Changes the state"""
     state.cleanup()
     del state
-    return new_state(args_dict)
+    return new_state(stdscr, session, logger)
 
 def main(stdscr):
     """Main function"""
-    # Instantiate the menu object
-    # Set up some arbitrary menu items
-    menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
-    menu_states = [StateExit, StateExit, StateExit, StateExit, StateExit, StateExit]
-
-    menu = Menu(stdscr, menu_items, menu_states, colours.WHITE_BLACK, colours.HIGHLIGHT)
-
     curses.curs_set(0)
     stdscr.clear()
     stdscr.addstr("Welcome to David Social!\n")
@@ -225,27 +109,18 @@ def main(stdscr):
     session = login()
 
     # Initial state is main
-    instantiate_args = {
-        'stdscr': stdscr,
-        'session': session,
-    }
-
     # Instantiate the state
-    state = StateMain(instantiate_args)
+    state = StateMain(stdscr, session, LOGGER)
 
     """Main loop"""
     while True:
-        # Set up arguments
-        instantiate_args = {}
-        update_args = {}
-        if isinstance(state, StateMain):
-            update_args = {
-                'menu_rows': menu.get_rows(),
-            }
-
         # Update the state
+        # If it returns a state then we need to change state
+        # Otherwise it will return None and we continue normal execution
         try:
-            state.update(update_args)
+            update = state.update()
+            if update is not None:
+                state = change_state(state, update, stdscr, session, LOGGER)
         except Exception as e:
             logging.exception(e)
             exit(1)
@@ -256,22 +131,6 @@ def main(stdscr):
         curses.curs_set(0)
         try:
             state.draw()
-        except:
-            pass
-
-        # Menuing
-        try:
-            function = menu.update()
-            menu.draw()
-            # I am in hell
-            # I try to be a good programmer
-            # And everything is just hell
-            if function is not None:
-                if issubclass(function, State):
-                    logging.info(f"Changing state to {function}")
-                    state = change_state(state, function, {'stdscr': stdscr})
-                else:
-                    function()
         except:
             pass
 

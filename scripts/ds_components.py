@@ -7,22 +7,27 @@ import scripts.string_utils as su
 
 
 class Menu():
-    def __init__(self, stdscr, items, states, default_col, highlight_col):
+    def __init__(self, stdscr, items, states):
+        # Initialise colours
+        self.colours = ColourConstants()
+        self.colours.init_colours()
+        # Other stuff
         self.stdscr = stdscr
         self.items = items
         self.states = states
         self.cols = 0
         self.rows = 0
         self.selection = 0
-        self.default_col = default_col
-        self.highlight_col = highlight_col
         # Used for spacing
-        self.longest_item = len(max(self.items, key=len))
+        if len(self.items) > 0:
+            self.longest_item = len(max(self.items, key=len))
+        else:
+            self.longest_item = 0
 
     def clear_row(self, row):
         """Blank out the specified row"""
         _, width = curses.initscr().getmaxyx()
-        self.stdscr.addstr(row, 0, " " * (width - 1), self.default_col)
+        self.stdscr.addstr(row, 0, " " * (width - 1), self.cols)
 
     def get_key(self, key, key_check):
         """Check if a key is pressed"""
@@ -98,7 +103,7 @@ class Menu():
         # Print menu items
         for item in self.items:
             x_offset, y_offset = coords.pop(0)
-            col = self.highlight_col if self.selection == self.items.index(item) else self.default_col
+            col = self.colours.HIGHLIGHT if self.selection == self.items.index(item) else self.colours.WHITE_BLACK
             self.stdscr.addstr(y + y_offset, x + x_offset, item, col)
 
     def get_rows(self):
