@@ -1,8 +1,19 @@
 import curses
 import os
+from enum import Enum
 from datetime import datetime
-from scripts.ds_components import Menu, Ticker, AsciiImage
+from scripts.ds_components import Menu, Ticker, AsciiImage, Feed
 import scripts.api_routes as david_api
+
+# We need to create a feeds dictionary to store the feed objects so we can save our place in them
+feeds = {}
+
+# Create special keywords for bootlicker and global feeds for use in the feeds dictionary
+# This is to ensure they are differentiated from user feeds
+# But for example if there was a user called 'bootlicker' that would cause issues
+class FeedType(Enum):
+    BOOTLICKER = 0
+    GLOBAL = 1
 
 class State():
     def update(self):
@@ -10,7 +21,7 @@ class State():
         # Update the menu
         update = self.menu.update()
         # If the menu returns a state, return it
-        if update is None or issubclass(update, State):
+        if update is None or isinstance(update, State):
             return update
         # Otherwise the menu has returned a function so call it
         update()
@@ -52,7 +63,7 @@ class StateMain(State):
 
         # Initialise the menu
         menu_items = ["Feed", "Bootlickers", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
-        menu_states = [StateExit, StateExit, StateExit, StateExit, StateExit, StateExit]
+        menu_states = [StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger), StateExit(self.stdscr, self.session, self.logger)]
         self.menu = Menu(self.stdscr, menu_items, menu_states)
 
     def generate_david_ascii(self):
@@ -148,3 +159,29 @@ class StateExit(State):
         """Clean up the state"""
         self.logger.info('cleaning up StateExit stuff')
         del self.menu
+
+class StateFeed(State):
+    def __init__(self, stdscr, session, logger, feed_type, user_feed=None):
+        """Initialise the state"""
+        self.stdscr = stdscr
+        self.session = session
+        self.logger = logger
+
+        # Set up the feed
+        self.feed_type = feed_type
+        self.feed = Feed(self.session, self.feed_type, user_feed)
+
+        # Create menu
+        menu_items = []
+        menu_functions = []
+        self.menu = Menu(self.stdscr, menu_items, menu_functions)
+
+    def update(self):
+        """Update the state"""
+        # Call the parent update function
+        return super().update()
+
+    def draw(self):
+        """Draw the state"""
+        # Call the parent draw function
+        super().draw()

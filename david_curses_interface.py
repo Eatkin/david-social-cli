@@ -15,25 +15,13 @@ from scripts.colours import ColourConstants
 from scripts.states import State, StateMain, StateExit
 
 """
-TODO: Kill myself
+TODO: Create feed object
+TODO: Feed object contains a list of posts
+TODO: Feed object can be used to fetch more posts as necessary
+TODO: As this uses David Intelligence it's not as straightforward as just concatenating lists, needs mildly complex logic
+TODO: Create feed state for viewing feed
+TODO: Functions for the feed state: Go to next/previous post, like post, view replies, view attached image (ascii or open with PIL), reply to post
 TODO: Why does pressing escape pause everything?
-TODO: Stuff
-TODO: More stuff
-TODO: Even more stuff
-TODO: Kill myself again
-TODO: Ascend to a higher plane of existence
-TODO: Become a god
-TODO: Become one with the universe
-TODO: Become the universe
-TODO: Become everything
-TODO: Become nothing
-TODO: Become the void
-TODO: Become the void in the void
-TODO: Become the void in the void in the void
-TODO: Become the void in the void in the void in the void
-TODO: Become the void in the void in the void in the void in the void
-TODO: Resurrect myself
-TODO: Work on David Social CLI
 """
 
 # Initialise curses
@@ -79,11 +67,12 @@ def clear_row(stdscr, row):
     _, width = curses.initscr().getmaxyx()
     stdscr.addstr(row, 0, " " * (width - 1), colours.WHITE_BLACK)
 
-def change_state(state, new_state, stdscr, session, logger):
+def change_state(state, new_state):
     """Changes the state"""
     state.cleanup()
     del state
-    return new_state(stdscr, session, logger)
+    # new_state should be an initialised state
+    return new_state
 
 def main(stdscr):
     """Main function"""
@@ -120,7 +109,7 @@ def main(stdscr):
         try:
             update = state.update()
             if update is not None:
-                state = change_state(state, update, stdscr, session, LOGGER)
+                state = change_state(state, update)
         except Exception as e:
             logging.exception(e)
             exit(1)

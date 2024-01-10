@@ -1,6 +1,7 @@
 import curses
 from datetime import datetime
 from math import floor
+from bs4 import BeautifulSoup
 from scripts.colours import ColourConstants
 import scripts.api_routes as david_api
 import scripts.string_utils as su
@@ -118,16 +119,28 @@ class Ticker():
         self.colours.init_colours()
         _, width = curses.initscr().getmaxyx()
         self.stdscr = stdscr
-        self.text = david_api.query_api("get-ticker-text")
+        # Get the ticker, we default to None
+        self.text = None
+        self.text = self.get_ticker()
         self.ticker_x = 0
         self.ticker_spacing = max(round(width * 0.2), 2)
         self.t = datetime.now()
         self.ticker = self.text
         self.ticker_update_rate = 0.2
 
-    def update_ticker(self):
+    def get_ticker(self):
         """Get new ticker text from the API"""
-        self.text = david_api.query_api("get-ticker-text")
+        r = david_api.query_api("get-ticker-text")
+        if r is not None:
+            # Parse the ticker text - it's in html
+            soup = BeautifulSoup(r['tickerText'], "html.parser")
+            # Extract the text from the soup
+            return soup.text.strip()
+        elif self.text is not None:
+            return self.text
+        else:
+            return "Ticker text not found :("
+
 
     def update(self):
         """Updates the ticker text"""
@@ -223,3 +236,89 @@ class AsciiImage():
     def draw(self):
         """Draw the ascii image"""
         self.stdscr.addstr(self.ascii)
+
+"""Notes on the feed class:
+response json structure is a list of dictionaries with keys:
+- id
+- username
+- content
+- likes
+- avi
+- attached_image
+- userid (None)
+- timestamp
+- reply_to
+- liked_by
+- ncomments
+- david_selection
+"""
+class Feed():
+    def __init__(self, session, type="Bootlicker", user_feed=None):
+        """Create feed, type can be Bootlicker or Global"""
+        # TODO: Probably add user page feed to this as that should be of similar format
+        # Fetch posts based on type
+        self.type = type
+        self.session = session
+        if self.type == "Bootlicker":
+            self.api_route = "bootlicker-feed"
+            self.params = [50]
+        elif self.type == "Global":
+            self.api_route = "global-feed"
+            self.params = [1]
+        elif self.type == "User":
+            self.api_route = "user-posts"
+            self.params = [user_feed]
+
+        # Query the api
+        # The window is a parameter which we can hold on to if we wish to load more posts
+        self.posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
+
+    def get_post(self, index):
+        """Get a post from the feed"""
+        return self.posts[index]
+
+    def get_post_id(self, index):
+        """Get the post id from the feed"""
+        return self.posts[index]["id"]
+
+    def get_replies(self, index):
+        """Get the replies to a post"""
+        # Use the replies route
+        id = self.get_post_id(index)
+        return david_api.query_api("replies", params=[id], cookies=self.session.cookies)
+
+    def has_image(self, index):
+        """Check if a post has an image"""
+        return self.posts[index]["attached_image"] != ""
+
+    def get_image(self, index):
+        """Get the image from a post"""
+        return self.posts[index]["attached_image"]
+
+    def load_more_posts(self):
+        """Load more posts
+        Returns: True if more posts were loaded, False if there are no more posts"""
+        if self.type == "Bootlicker":
+            self.params[0] += 50
+        elif self.type == "Global":
+            self.params[0] += 1
+        elif self.type == "User":
+            return False
+
+        # Query the api with the new window size
+        new_posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
+
+        # We now have the annoying problem of David 'Intelligence' being inserted into the posts list
+        # So basically we need to find the last post in self.posts in the new posts list
+        last_post = self.posts[-1]
+        # Find the index of the last post
+        last_post_index = new_posts.index(last_post)
+        # There is an exception if (somehow) we reach the end of the feed
+        if last_post_index == len(new_posts) - 1:
+            # In this case we don't need to do anything
+            return False
+        # Now slice the new posts list to get the new posts
+        new_posts = new_posts[last_post_index + 1:]
+        # Now we can append the new posts to the old posts
+        self.posts += new_posts
+        return True
