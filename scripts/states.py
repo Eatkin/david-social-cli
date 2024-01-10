@@ -5,6 +5,14 @@ from datetime import datetime
 from scripts.ds_components import Menu, Ticker, AsciiImage, Feed
 import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
+import scripts.env_utils as eu
+
+# TODO: Add a timestamp to the feed so we can see when it was last updated
+# TODO: Well, maybe, DS doesn't update that often so it might not be necessary
+# TODO: Add state caching so we can preserve state objects
+# TODO: Add new functions in State() for advance_state() and regress_state()
+# TODO: Some other stuff like state_refresh which returns menu pointer to 0
+# TODO: Need to refactor how state objects are updated in the main entrypoint after this
 
 # We need to create a feeds dictionary to store the feed objects so we can save our place in them
 feeds = {}
@@ -206,7 +214,16 @@ class StateFeed(State):
         self.colours = ColourConstants()
         self.colours.init_colours()
 
+        # Get our username
+        self.username, _ = eu.parse_secrets()
+        del _
+
     # Navigation functions
+    # TODO: This needs updating for things like viewing images, liking etc
+    # TODO: If we've already liked it, then we should remove the like option from the menu
+    # TODO: Actually the likes does not include if WE'VE liked the post, so we need to check that
+    # TODO: There's the liked-by route which returns a list of people who have liked the post
+    # TODO: But we don't want to spam the server with requests so we should only do that if we need to
     def next_post(self):
         """Go to the next post"""
         self.feed.post_index += 1
@@ -224,13 +241,15 @@ class StateFeed(State):
             if not more_posts_loaded:
                 # If there are no more posts remove "Next Post" from the menu
                 self.menu.update_menu("Next Post", self.next_post, None)
-        pass
 
     def previous_post(self):
         """Go to the previous post"""
-        # TODO: Check if we are at the start of the feed for menu updating
-        # TODO: Check if there is an attached image for menu updating
-        pass
+        self.feed.post_index -= 1
+        self.current_post = self.feed.get_post(self.feed.post_index)
+
+        # Check if post index is 0 and remove the previous post option if so
+        if self.feed.post_index == 0:
+            self.menu.update_menu("Previous Post", self.previous_post, None)
 
     def update(self):
         """Update the state"""
@@ -239,6 +258,7 @@ class StateFeed(State):
 
     def draw_post(self):
         """Draw the current post"""
+        # TODO: Make this look nicer with some colours and shit
         linebreak = "-" * (curses.COLS - 1) + "\n"
 
         # If this is a David Selection say so
@@ -250,7 +270,7 @@ class StateFeed(State):
         timestamp = self.current_post['timestamp']
         timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
         date_time = timestamp.strftime("%d/%m/%Y %H:%M:%S")
-        self.stdscr.addstr(f"@{self.current_post['username']} posted at {date_time}\n")
+        self.stdscr.addstr(f"@{self.current_post['username']} posted at {date_time}\n", self.colours.YELLOW_BLACK)
         self.stdscr.addstr(linebreak)
 
         # Post content
@@ -258,23 +278,41 @@ class StateFeed(State):
         self.stdscr.addstr(linebreak)
 
         # Likes and comments
-        if len(self.current_post['liked_by']) > 0:
-            likers = ", ".join(self.current_post['liked_by'])
+        likes = self.current_post['liked_by'].copy()
+        liked_by_me = False
+        if len(likes) > 0:
+            # Check if we're in the list of likers and remove ourselves if we are
+            lowered_likes = [liker.lower() for liker in likes]
+            if self.username.lower() in lowered_likes:
+                liked_by_me = True
+                del likes[lowered_likes.index(self.username.lower())]
+            likers = ", ".join(likes)
+            self.stdscr.addstr("Liked by: ")
+            # We want to put our name at the beginning and highlight it in yellow
+            if liked_by_me:
+                self.stdscr.addstr(self.username, self.colours.YELLOW_BLACK)
+                if len(likes) > 0:
+                    self.stdscr.addstr(", ")
+            self.stdscr.addstr(likers + "\n")
         else:
             likers = "Nobody, you should be the first! :3"
-        self.stdscr.addstr(f"Liked by: {likers}\n")
+            self.stdscr.addstr(likers + "\n")
+
+        # Cleanup
+        del likes
+
+        self.stdscr.addstr(linebreak)
 
         # TODO: Tell the user who has replied to the post
         if self.current_post['ncomments'] > 0:
-            commenters = self.current_post['ncomments']
+            commenters = f"{self.current_post['ncomments']} replies"
         else:
             commenters = "Nobody has replied to this post, you should be the first! :3"
-        if self.current_post['ncomments'] > 0:
-            self.stdscr.addstr(f"{commenters} replies\n")
+        self.stdscr.addstr(commenters + "\n")
 
         if self.current_post['attached_image'] != "":
-            self.stdscr.addstr("Image attached, you should look at it! :3\n")
             self.stdscr.addstr(linebreak)
+            self.stdscr.addstr("Image attached, you should look at it! :3\n")
 
     def draw(self):
         """Draw the state"""

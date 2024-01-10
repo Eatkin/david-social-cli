@@ -74,9 +74,6 @@ class Menu():
                 # If the item is the last item then we need to decrement the selection
                 if index == len(self.items) - 1:
                     self.selection -= 1
-                # Otherwise we can just increment the selection
-                else:
-                    self.selection += 1
 
             # Remove the item and state
             del self.items[index]
