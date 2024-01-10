@@ -191,7 +191,7 @@ class StateFeed(State):
 
         # Create menu
         menu_items = ["Next Post", ]
-        menu_functions = [self.next_post()]
+        menu_functions = [self.next_post]
 
         # If we are not on index 0 of the feed then prepend with "Previous post"
         if self.feed.post_index != 0:
@@ -209,8 +209,21 @@ class StateFeed(State):
     # Navigation functions
     def next_post(self):
         """Go to the next post"""
-        # TODO: Check if we are at the start or end of feed for menu updating
-        # TODO: Check if there is an attached image for menu updating
+        self.feed.post_index += 1
+        self.current_post = self.feed.get_post(self.feed.post_index)
+
+        # Check if we have reached the end of the feed or if post index is 1
+        if self.feed.post_index == 1:
+            # Prepend "Previous Post" to the menu
+            self.menu.update_menu("Previous Post", self.previous_post, 0)
+
+        # If we have reached the end of the feed try and get more posts
+        if self.feed.post_index == len(self.feed.posts) - 1:
+            # Get more posts
+            more_posts_loaded = self.feed.load_more_posts()
+            if not more_posts_loaded:
+                # If there are no more posts remove "Next Post" from the menu
+                self.menu.update_menu("Next Post", self.next_post, None)
         pass
 
     def previous_post(self):
@@ -230,7 +243,7 @@ class StateFeed(State):
 
         # If this is a David Selection say so
         if self.current_post['david_selection']:
-            self.stdscr.addstr("*:･ﾟ✧*:･ﾟ✧ David Selection\n", self.colours.HIGHLIGHT)
+            self.stdscr.addstr("*:･ﾟ✧*:･ﾟ✧ David Selection\n", self.colours.YELLOW_BLACK | curses.A_BLINK)
             self.stdscr.addstr(linebreak)
 
         # Username and timestamp
@@ -239,10 +252,6 @@ class StateFeed(State):
         date_time = timestamp.strftime("%d/%m/%Y %H:%M:%S")
         self.stdscr.addstr(f"@{self.current_post['username']} posted at {date_time}\n")
         self.stdscr.addstr(linebreak)
-
-        if self.current_post['attached_image'] != "":
-            self.stdscr.addstr("Image attached, you should look at it! :3\n")
-            self.stdscr.addstr(linebreak)
 
         # Post content
         self.stdscr.addstr(f"{self.current_post['content']}\n")
@@ -255,12 +264,17 @@ class StateFeed(State):
             likers = "Nobody, you should be the first! :3"
         self.stdscr.addstr(f"Liked by: {likers}\n")
 
+        # TODO: Tell the user who has replied to the post
         if self.current_post['ncomments'] > 0:
             commenters = self.current_post['ncomments']
         else:
             commenters = "Nobody has replied to this post, you should be the first! :3"
         if self.current_post['ncomments'] > 0:
             self.stdscr.addstr(f"{commenters} replies\n")
+
+        if self.current_post['attached_image'] != "":
+            self.stdscr.addstr("Image attached, you should look at it! :3\n")
+            self.stdscr.addstr(linebreak)
 
     def draw(self):
         """Draw the state"""

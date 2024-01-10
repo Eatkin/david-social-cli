@@ -63,6 +63,34 @@ class Menu():
 
         return None
 
+    def update_menu(self, item, function, pos):
+        """Update the menu items"""
+        # If pos is none then we remove it
+        if pos is None:
+            # Get the index of the item
+            index = self.items.index(item)
+            # If the item is selected then we need to change the selection
+            if index == self.selection:
+                # If the item is the last item then we need to decrement the selection
+                if index == len(self.items) - 1:
+                    self.selection -= 1
+                # Otherwise we can just increment the selection
+                else:
+                    self.selection += 1
+
+            # Remove the item and state
+            del self.items[index]
+            del self.states[index]
+        else:
+            self.items.insert(pos, item)
+            self.states.insert(pos, function)
+            # Update selection
+            if pos <= self.selection:
+                self.selection += 1
+
+        # Update longest item
+        self.longest_item = len(max(self.items, key=len))
+
     def draw(self):
         """Draw the menu"""
         # Reset rows and columns
