@@ -7,12 +7,9 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Add a timestamp to the feed so we can see when it was last updated
-# TODO: Well, maybe, DS doesn't update that often so it might not be necessary
-# TODO: Add state caching so we can preserve state objects
-# TODO: Add new functions in State() for advance_state() and regress_state()
-# TODO: Some other stuff like state_refresh which returns menu pointer to 0
-# TODO: Need to refactor how state objects are updated in the main entrypoint after this
+# TODO: Add a ticker update state
+# TODO: Remember to check for conditions for when the ticker update is invalid (see what the api returns)
+# TODO: Remember to update ticker in StateMain() if we are on the ticker update state
 
 # We need to create a feeds dictionary to store the feed objects so we can save our place in them
 feeds = {}
@@ -236,6 +233,17 @@ class StateExit(State):
         del self.menu
 
 class StateFeed(State):
+    """Should standardise the order of menu:
+    1. Previous Post
+    2. Next Post
+    3. Like
+    4. Reply
+    5. Delete
+    6. Back
+    """
+    # TODO: Add a function to update the menu
+    # TODO: Basically we wanna delete the menu items and refresh it cause otherwise it'll be a mess
+    # TODO: Doing this we can iteratively work through each menu item and add as necessary
     def __init__(self, stdscr, session, logger, feed_type, user_feed=None):
         """Initialise the state"""
         self.stdscr = stdscr
@@ -255,39 +263,10 @@ class StateFeed(State):
             # Add our feed to the feeds dictionary
             feeds[self.feed_key] = self.feed
 
-        # Save a couple useful functions
-        self.next_post_func = {
-            'type': 'function',
-            'function': self.next_post,
-            'args': []
-        }
-        self.prev_post_func = {
-            'type': 'function',
-            'function': self.previous_post,
-            'args': []
-        }
+        # Setup menu functions
+        self.setup_menu_functions()
 
-        # Create menu, checking to make sure we have more than one post before adding a next post option
-        if len(self.feed.posts) > 1:
-            menu_items = ["Next Post", ]
-            menu_functions = [self.next_post_func]
-
-
-        # If we are not on index 0 of the feed then prepend with "Previous post"
-        if self.feed.post_index != 0:
-            menu_items.insert(0, "Previous Post")
-            menu_functions.insert(0, self.prev_post_func)
-
-        # Add the back option
-        menu_items.append("Back")
-        back_func = {
-            'type': 'function',
-            'function': self.regress_state,
-            'args': []
-        }
-        menu_functions.append(back_func)
-
-        self.menu = Menu(self.stdscr, menu_items, menu_functions)
+        self.menu = Menu(self.stdscr, [], [])
 
         self.current_post = self.feed.get_post(self.feed.post_index)
 
@@ -298,6 +277,92 @@ class StateFeed(State):
         # Get our username
         self.username, _ = eu.parse_secrets()
         del _
+
+        # Some miscellaneous variables
+        self.have_liked = self.post_is_liked()
+
+        # Now update the menu
+        self.update_menu()
+
+    def setup_menu_functions(self):
+        """Defines functions used by the menu"""
+        self.next_post_func = {
+            'type': 'function',
+            'function': self.next_post,
+            'args': []
+        }
+        self.prev_post_func = {
+            'type': 'function',
+            'function': self.previous_post,
+            'args': []
+        }
+        self.like_func = {
+            'type': 'function',
+            'function': self.like_post,
+            'args': []
+        }
+        self.back_func = {
+            'type': 'function',
+            'function': self.regress_state,
+            'args': []
+        }
+
+    def update_menu(self):
+        """Updates the menu"""
+        # Update whether we have liked the post
+        self.have_liked = self.post_is_liked()
+
+        # Iterate through conditions for menu items and add them if necessary
+        # In this order: Previous Post, Next Post, Like, Reply, Delete, Back
+        # We need to update menu pointer maybe so save the list of items
+        menu_items = self.menu.get_items()
+
+        # Check what item our menu pointer is on
+        pointer_pos = self.menu.selection
+
+        # Clear out menu
+        self.menu.clear_menu()
+
+        # Now we can add the items back in
+        # If we are not on index 0 of the feed then prepend with "Previous post"
+        if self.feed.post_index != 0:
+            self.menu.update_menu("Previous Post", self.prev_post_func, self.menu.get_num_items())
+
+        # If we are not on the last post of the feed then append with "Next post"
+        if self.feed.post_index != len(self.feed.posts) - 1:
+            self.menu.update_menu("Next Post", self.next_post_func, self.menu.get_num_items())
+
+        # If we have not liked the post then append with "Like"
+        if not self.have_liked:
+            self.menu.update_menu("Like", self.like_func, self.menu.get_num_items())
+
+        # Now finally add the back option
+        self.menu.update_menu("Back", self.back_func, self.menu.get_num_items())
+
+        # If there are no items our pointer is set to 0
+        if len(menu_items) == 0:
+            self.menu.selection = 0
+            return None
+
+        # What item are we on?
+        item_on = menu_items[pointer_pos]
+        # Get new items
+        new_items = self.menu.get_items()
+        # Do we still have that item?
+        if item_on in new_items:
+            # If so, set the menu pointer to that item
+            self.menu.selection = new_items.index(item_on)
+        # Otherwise we have to do some logic to figure out where to put the menu pointer
+        else:
+            if pointer_pos == len(menu_items) - 1:
+                self.menu.selection = self.menu.get_num_items() - 1
+            else:
+                # In this case we're on next/previous/like because they're the only ones that can be removed
+                # In which case it is easiest to move the pointer back one
+                # If we go below 0 set to 0
+                self.menu.selection = max(0, pointer_pos - 1)
+
+        return None
 
     # Navigation functions
     # TODO: This needs updating for things like viewing images, liking etc
@@ -310,18 +375,7 @@ class StateFeed(State):
         self.feed.post_index += 1
         self.current_post = self.feed.get_post(self.feed.post_index)
 
-        # Check if we have reached the end of the feed or if post index is 1
-        if self.feed.post_index == 1:
-            # Prepend "Previous Post" to the menu
-            self.menu.update_menu("Previous Post", self.prev_post_func, 0)
-
-        # If we have reached the end of the feed try and get more posts
-        if self.feed.post_index == len(self.feed.posts) - 1:
-            # Get more posts
-            more_posts_loaded = self.feed.load_more_posts()
-            if not more_posts_loaded:
-                # If there are no more posts remove "Next Post" from the menu
-                self.menu.update_menu("Next Post", self.next_post_func, None)
+        self.update_menu()
 
         return None
 
@@ -334,11 +388,32 @@ class StateFeed(State):
         if self.feed.post_index == 0:
             self.menu.update_menu("Previous Post", self.prev_post_func, None)
 
+        self.update_menu()
+
+        return None
+
+    def post_is_liked(self):
+        """Check if the post is liked"""
+        # Check if we have liked the post
+        if self.username.lower() in [liker.lower() for liker in self.current_post['liked_by']]:
+            return True
+        else:
+            return False
+
+    def like_post(self):
+        """Likes the post"""
+        response = david_api.query_api("like-post", [self.current_post['id']], self.session.cookies)
+        if response is None:
+            return None
+
+        # Update feed object
+        self.feed.posts[self.feed.post_index]['liked_by'].append(self.username)
+
+        self.update_menu()
         return None
 
     def draw_post(self):
         """Draw the current post"""
-        # TODO: Make this look nicer with some colours and shit
         linebreak = "-" * (curses.COLS - 1) + "\n"
 
         # If this is a David Selection say so
@@ -361,20 +436,22 @@ class StateFeed(State):
 
         # Likes and comments
         likes = self.current_post['liked_by'].copy()
-        liked_by_me = False
-        if len(likes) > 0:
-            # Check if we're in the list of likers and remove ourselves if we are
+        # We put our name at the beginning in yellow to signify we have liked it
+        if len(likes) > 0 and self.have_liked:
+            # Find our position in the list of likers and remove it
             lowered_likes = [liker.lower() for liker in likes]
-            if self.username.lower() in lowered_likes:
-                liked_by_me = True
-                del likes[lowered_likes.index(self.username.lower())]
+            del likes[lowered_likes.index(self.username.lower())]
+
             likers = ", ".join(likes)
             self.stdscr.addstr("Liked by: ", self.colours.GREEN_BLACK)
             # We want to put our name at the beginning and highlight it in yellow
-            if liked_by_me:
-                self.stdscr.addstr(self.username, self.colours.YELLOW_BLACK)
-                if len(likes) > 0:
-                    self.stdscr.addstr(", ")
+            self.stdscr.addstr(self.username, self.colours.YELLOW_BLACK)
+            if len(likes) > 0:
+                self.stdscr.addstr(", ")
+            self.stdscr.addstr(likers + "\n")
+        elif len(likes) > 0 and not self.have_liked:
+            likers = ", ".join(likes)
+            self.stdscr.addstr("Liked by: ", self.colours.GREEN_BLACK)
             self.stdscr.addstr(likers + "\n")
         else:
             likers = "Nobody, you should be the first! :3"

@@ -88,9 +88,22 @@ class Menu():
         # Update longest item
         self.longest_item = len(max(self.items, key=len))
 
+    def clear_menu(self):
+        """Remove all menu items"""
+        self.items = []
+        self.functions = []
+
     def has_item(self, item):
         """Check if the menu has an item"""
         return item in self.items
+
+    def get_num_items(self):
+        """Return the number of items in the menu"""
+        return len(self.items)
+
+    def get_items(self):
+        """Return the menu items as a copy"""
+        return self.items.copy()
 
     def draw(self):
         """Draw the menu"""
