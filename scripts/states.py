@@ -350,7 +350,9 @@ class StateFeed(State):
         timestamp = self.current_post['timestamp']
         timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
         date_time = timestamp.strftime("%d/%m/%Y %H:%M:%S")
-        self.stdscr.addstr(f"@{self.current_post['username']} posted at {date_time}\n", self.colours.YELLOW_BLACK)
+        self.stdscr.addstr(f"@{self.current_post['username']} ", self.colours.YELLOW_BLACK)
+        self.stdscr.addstr("posted at ")
+        self.stdscr.addstr(f"{date_time}\n", self.colours.GREEN_BLACK)
         self.stdscr.addstr(linebreak)
 
         # Post content
@@ -367,7 +369,7 @@ class StateFeed(State):
                 liked_by_me = True
                 del likes[lowered_likes.index(self.username.lower())]
             likers = ", ".join(likes)
-            self.stdscr.addstr("Liked by: ")
+            self.stdscr.addstr("Liked by: ", self.colours.GREEN_BLACK)
             # We want to put our name at the beginning and highlight it in yellow
             if liked_by_me:
                 self.stdscr.addstr(self.username, self.colours.YELLOW_BLACK)
@@ -392,7 +394,8 @@ class StateFeed(State):
 
         if self.current_post['attached_image'] != "":
             self.stdscr.addstr(linebreak)
-            self.stdscr.addstr("Image attached, you should look at it! :3\n")
+            self.stdscr.addstr("Image attached", self.colours.YELLOW_BLACK)
+            self.stdscr.addstr(", you should look at it! :3\n")
 
     def draw(self):
         """Draw the state"""

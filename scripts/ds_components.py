@@ -88,6 +88,10 @@ class Menu():
         # Update longest item
         self.longest_item = len(max(self.items, key=len))
 
+    def has_item(self, item):
+        """Check if the menu has an item"""
+        return item in self.items
+
     def draw(self):
         """Draw the menu"""
         # Reset rows and columns
