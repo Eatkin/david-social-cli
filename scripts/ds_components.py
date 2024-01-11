@@ -281,6 +281,7 @@ class Feed():
     def __init__(self, session, type="Bootlicker", user_feed=None):
         """Create feed, type can be Bootlicker or Global"""
         # TODO: Probably add user page feed to this as that should be of similar format
+        # TODO: Check to make sure there are actually posts in the feed - if not then we need to handle this
         # Fetch posts based on type
         self.type = type
         self.session = session
@@ -337,7 +338,15 @@ class Feed():
 
         # We now have the annoying problem of David 'Intelligence' being inserted into the posts list
         # So basically we need to find the last post in self.posts in the new posts list
-        last_post = self.posts[-1]
+        # This loop ensures we don't pick a David Selection as the last post
+        i = -1
+        while self.posts[i]["david_selection"]:
+            i -= 1
+            # Failsafe to prevent infinite loop
+            if -i > len(self.posts):
+                return False
+
+        last_post = self.posts[-i]
         # This actually crashes so lazy try except to make sure it doesn't break
         try:
             # Find the index of the last post

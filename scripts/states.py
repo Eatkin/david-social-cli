@@ -197,9 +197,11 @@ class StateFeed(State):
             # Add our feed to the feeds dictionary
             feeds[self.feed_key] = self.feed
 
-        # Create menu
-        menu_items = ["Next Post", ]
-        menu_functions = [self.next_post]
+        # Create menu, checking to make sure we have more than one post before adding a next post option
+        if len(self.feed.posts) > 1:
+            menu_items = ["Next Post", ]
+            menu_functions = [self.next_post]
+
 
         # If we are not on index 0 of the feed then prepend with "Previous post"
         if self.feed.post_index != 0:
