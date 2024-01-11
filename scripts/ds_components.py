@@ -297,8 +297,7 @@ response json structure is a list of dictionaries with keys:
 class Feed():
     def __init__(self, session, type="Bootlicker", user_feed=None):
         """Create feed, type can be Bootlicker or Global"""
-        # TODO: Probably add user page feed to this as that should be of similar format
-        # TODO: Check to make sure there are actually posts in the feed - if not then we need to handle this
+        # TODO: Handling of user feeds and reply threads
         # Fetch posts based on type
         self.type = type
         self.session = session

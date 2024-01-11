@@ -1,5 +1,8 @@
 import curses
 import os
+import requests
+from io import BytesIO
+from PIL import Image
 from enum import Enum
 from datetime import datetime
 from scripts.ds_components import Menu, Ticker, AsciiImage, Feed
@@ -7,9 +10,15 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
+# TODO: Feed state has a divider of "-" between posts, this doesn't get resized if Terminal is resized
+
 # TODO: Add a ticker update state
 # TODO: Remember to check for conditions for when the ticker update is invalid (see what the api returns)
-# TODO: Remember to update ticker in StateMain() if we are on the ticker update state
+# TODO: Remember to update ticker in StateMain() if we are on the ticker update state (I have no idea how to do this rn, states can't communicate with each other)
+# TODO: ^ MAYBE an optional callback function can be included in the standard dictionary for menu items
+# TODO: Add a cat petting state
+
+# OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
 # We need to create a feeds dictionary to store the feed objects so we can save our place in them
 feeds = {}
@@ -233,17 +242,13 @@ class StateExit(State):
         del self.menu
 
 class StateFeed(State):
-    """Should standardise the order of menu:
-    1. Previous Post
-    2. Next Post
-    3. Like
-    4. Reply
-    5. Delete
-    6. Back
-    """
-    # TODO: Add a function to update the menu
-    # TODO: Basically we wanna delete the menu items and refresh it cause otherwise it'll be a mess
-    # TODO: Doing this we can iteratively work through each menu item and add as necessary
+    # TODO: ASCII art for attached images to fill space (NOT TESTED)
+    # TODO: View attached image (needs an image viewer state plus should be able to open it properly as ASCII)
+    # TODO: ^ MAYBE that, but at the moment it's just ascii and open with PIL
+    # TODO: Reply to post (needs a reply state)
+    # TODO: View replies (can use API request plus create a new feed state for this)
+    # TODO: ^ As above, the feed state needs to have a special case for replies
+    # TODO: Option to bootlick a user if we aren't already bootlicking them
     def __init__(self, stdscr, session, logger, feed_type, user_feed=None):
         """Initialise the state"""
         self.stdscr = stdscr
@@ -280,6 +285,7 @@ class StateFeed(State):
 
         # Some miscellaneous variables
         self.have_liked = self.post_is_liked()
+        self.attached_image = ""
 
         # Now update the menu
         self.update_menu()
@@ -301,6 +307,11 @@ class StateFeed(State):
             'function': self.like_post,
             'args': []
         }
+        self.view_image_func = {
+            'type': 'function',
+            'function': self.view_image,
+            'args': []
+        }
         self.back_func = {
             'type': 'function',
             'function': self.regress_state,
@@ -313,7 +324,7 @@ class StateFeed(State):
         self.have_liked = self.post_is_liked()
 
         # Iterate through conditions for menu items and add them if necessary
-        # In this order: Previous Post, Next Post, Like, Reply, Delete, Back
+        # In this order: Previous Post, Next Post, Like, View Replies, Reply, Bootlick (if not bootlicking), Delete (if our post), Back
         # We need to update menu pointer maybe so save the list of items
         menu_items = self.menu.get_items()
 
@@ -335,6 +346,9 @@ class StateFeed(State):
         # If we have not liked the post then append with "Like"
         if not self.have_liked:
             self.menu.update_menu("Like", self.like_func, self.menu.get_num_items())
+
+        if self.current_post['attached_image'] != "":
+            self.menu.update_menu("View Attached Image", self.view_image_func, self.menu.get_num_items())
 
         # Now finally add the back option
         self.menu.update_menu("Back", self.back_func, self.menu.get_num_items())
@@ -365,17 +379,15 @@ class StateFeed(State):
         return None
 
     # Navigation functions
-    # TODO: This needs updating for things like viewing images, liking etc
-    # TODO: If we've already liked it, then we should remove the like option from the menu
-    # TODO: Actually the likes does not include if WE'VE liked the post, so we need to check that
-    # TODO: There's the liked-by route which returns a list of people who have liked the post
-    # TODO: But we don't want to spam the server with requests so we should only do that if we need to
     def next_post(self):
         """Go to the next post"""
         self.feed.post_index += 1
         self.current_post = self.feed.get_post(self.feed.post_index)
 
         self.update_menu()
+
+        # Clear attached image
+        self.attached_image = ""
 
         return None
 
@@ -389,6 +401,9 @@ class StateFeed(State):
             self.menu.update_menu("Previous Post", self.prev_post_func, None)
 
         self.update_menu()
+
+        # Clear attached image
+        self.attached_image = ""
 
         return None
 
@@ -412,6 +427,17 @@ class StateFeed(State):
         self.update_menu()
         return None
 
+    def view_image(self):
+        """View the attached image"""
+        # Request the image
+        r = requests.get(self.current_post['attached_image'])
+        if r.status_code != 200:
+            return None
+
+        # Open and show image
+        img = Image.open(BytesIO(r.content))
+        img.show()
+
     def draw_post(self):
         """Draw the current post"""
         linebreak = "-" * (curses.COLS - 1) + "\n"
@@ -431,8 +457,11 @@ class StateFeed(State):
         self.stdscr.addstr(linebreak)
 
         # Post content
-        self.stdscr.addstr(f"{self.current_post['content']}\n")
-        self.stdscr.addstr(linebreak)
+        # Skip if blank
+        body = self.current_post['content']
+        if body != "":
+            self.stdscr.addstr(f"{self.current_post['content']}\n")
+            self.stdscr.addstr(linebreak)
 
         # Likes and comments
         likes = self.current_post['liked_by'].copy()
@@ -471,8 +500,17 @@ class StateFeed(State):
 
         if self.current_post['attached_image'] != "":
             self.stdscr.addstr(linebreak)
-            self.stdscr.addstr("Image attached", self.colours.YELLOW_BLACK)
-            self.stdscr.addstr(", you should look at it! :3\n")
+            rows = self.menu.get_rows()
+
+            if self.attached_image == "":
+                self.attached_image = AsciiImage(self.stdscr, self.current_post['attached_image'], url=True, centre=True, dim_adjust=(0, rows + 1))
+            else:
+                # Set the dim adjust to the current menu rows + 1
+                self.attached_image.set_dim_adjust((0, rows + 1))
+                # Update incase it needs resizing
+                self.attached_image.update()
+                # Then draw it
+                self.attached_image.draw()
 
     def draw(self):
         """Draw the state"""

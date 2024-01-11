@@ -15,12 +15,7 @@ from scripts.colours import ColourConstants
 from scripts.states import State, StateMain, StateExit
 
 """
-TODO: Create feed object
-TODO: Feed object contains a list of posts
-TODO: Feed object can be used to fetch more posts as necessary
-TODO: As this uses David Intelligence it's not as straightforward as just concatenating lists, needs mildly complex logic
-TODO: Create feed state for viewing feed
-TODO: Functions for the feed state: Go to next/previous post, like post, view replies, view attached image (ascii or open with PIL), reply to post
+TODO: Why does ASCII art flicker in full screen? Maybe something to do with curses failing to draw?
 TODO: Why does pressing escape pause everything?
 """
 
