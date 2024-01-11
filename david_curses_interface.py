@@ -110,12 +110,15 @@ def main(stdscr):
             state.draw()
         except Exception as e:
             # Only enable this if you REALLY NEED TO DEBUG
-            # Because otherwise it will print a billion errors
+            # Because otherwise it will print a billion errors if you try resize the window
             # logging.exception(e)
             pass
 
         stdscr.refresh()
         curses.doupdate()
+
+        # Sleep interval seems to prevent flickering
+        sleep(0.1)
 
 
 wrapper(main)
