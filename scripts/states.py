@@ -24,16 +24,26 @@ class FeedType(Enum):
     BOOTLICKER = 0
     GLOBAL = 1
 
+# State history for regressing to a previous state
+state_history = []
+
 class State():
     def update(self):
         """Update the state"""
         # Update the menu
         update = self.menu.update()
-        # If the menu returns a state, return it
-        if update is None or isinstance(update, State):
-            return update
-        # Otherwise the menu has returned a function so call it
-        update()
+        if update is None:
+            return None
+
+        if update['type'] == 'state_change':
+            # Create an instance of the state
+            state = update['state'](*update['args'])
+            # Call the associated function with the state as the argument
+            return update['function'](state)
+        elif update['type'] == 'function':
+            # Call the associated function
+            return update['function'](*update['args'])
+
         return None
 
     def draw(self):
@@ -45,6 +55,22 @@ class State():
         """Clean up the state"""
         # Delete menu
         del self.menu
+
+    def advance_state(self, state):
+        """Advance the state"""
+        # Add the current state to the history
+        state_history.append(self)
+
+        # state is an object so we can just return it
+        return state
+
+    def regress_state(self):
+        """Regress the state"""
+        # Cleanup
+        self.cleanup()
+        # Now revert to the previous state
+        previous_state = state_history.pop()
+        return previous_state
 
 class StateMain(State):
     def __init__(self, stdscr, session, logger):
@@ -74,12 +100,45 @@ class StateMain(State):
 
         # Initialise the menu
         menu_items = ["Bootlicker Feed", "Global Feed", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
-        menu_states = [StateFeed(self.stdscr, self.session, self.logger, "Bootlicker"),
-                       StateFeed(self.stdscr, self.session, self.logger, "Global"),
-                       StateExit(self.stdscr, self.session, self.logger),
-                       StateExit(self.stdscr, self.session, self.logger),
-                       StateExit(self.stdscr, self.session, self.logger),
-                       StateExit(self.stdscr, self.session, self.logger)]
+        menu_states = [
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StateFeed,
+                    'args': (self.stdscr, self.session, self.logger, "Bootlicker")
+                },
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StateFeed,
+                    'args': (self.stdscr, self.session, self.logger, "Global")
+                },
+                # Placeholders
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StateExit,
+                    'args': (self.stdscr, self.session, self.logger)
+                },
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StateExit,
+                    'args': (self.stdscr, self.session, self.logger)
+                },
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StateExit,
+                    'args': (self.stdscr, self.session, self.logger)
+                },
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StateExit,
+                    'args': (self.stdscr, self.session, self.logger)
+                },
+                ]
         self.menu = Menu(self.stdscr, menu_items, menu_states)
 
     def generate_david_ascii(self):
@@ -183,30 +242,50 @@ class StateFeed(State):
         self.session = session
         self.logger = logger
 
-        self.logger.info('initialising StateFeed')
         # This is the name of the user feed we are viewing
         self.user_feed = user_feed
 
         # Set up the feed
         self.feed_type = feed_type
-        self.feed_key = FeedType.BOOTLICKER if feed_type == "Bootlicker" else FeedType.GLOBAL if feed_type == "Global" else self.user_feed
+        self.feed_key = FeedType.BOOTLICKER if self.feed_type == "Bootlicker" else FeedType.GLOBAL if self.feed_type == "Global" else self.user_feed
         if self.feed_key in feeds:
             self.feed = feeds[self.feed_key]
         else:
-            self.feed = Feed(self.session, self.feed_type, user_feed)
+            self.feed = Feed(self.session, self.feed_type, self.user_feed)
             # Add our feed to the feeds dictionary
             feeds[self.feed_key] = self.feed
+
+        # Save a couple useful functions
+        self.next_post_func = {
+            'type': 'function',
+            'function': self.next_post,
+            'args': []
+        }
+        self.prev_post_func = {
+            'type': 'function',
+            'function': self.previous_post,
+            'args': []
+        }
 
         # Create menu, checking to make sure we have more than one post before adding a next post option
         if len(self.feed.posts) > 1:
             menu_items = ["Next Post", ]
-            menu_functions = [self.next_post]
+            menu_functions = [self.next_post_func]
 
 
         # If we are not on index 0 of the feed then prepend with "Previous post"
         if self.feed.post_index != 0:
             menu_items.insert(0, "Previous Post")
-            menu_functions.insert(0, self.previous_post())
+            menu_functions.insert(0, self.prev_post_func)
+
+        # Add the back option
+        menu_items.append("Back")
+        back_func = {
+            'type': 'function',
+            'function': self.regress_state,
+            'args': []
+        }
+        menu_functions.append(back_func)
 
         self.menu = Menu(self.stdscr, menu_items, menu_functions)
 
@@ -234,7 +313,7 @@ class StateFeed(State):
         # Check if we have reached the end of the feed or if post index is 1
         if self.feed.post_index == 1:
             # Prepend "Previous Post" to the menu
-            self.menu.update_menu("Previous Post", self.previous_post, 0)
+            self.menu.update_menu("Previous Post", self.prev_post_func, 0)
 
         # If we have reached the end of the feed try and get more posts
         if self.feed.post_index == len(self.feed.posts) - 1:
@@ -242,7 +321,9 @@ class StateFeed(State):
             more_posts_loaded = self.feed.load_more_posts()
             if not more_posts_loaded:
                 # If there are no more posts remove "Next Post" from the menu
-                self.menu.update_menu("Next Post", self.next_post, None)
+                self.menu.update_menu("Next Post", self.next_post_func, None)
+
+        return None
 
     def previous_post(self):
         """Go to the previous post"""
@@ -251,12 +332,9 @@ class StateFeed(State):
 
         # Check if post index is 0 and remove the previous post option if so
         if self.feed.post_index == 0:
-            self.menu.update_menu("Previous Post", self.previous_post, None)
+            self.menu.update_menu("Previous Post", self.prev_post_func, None)
 
-    def update(self):
-        """Update the state"""
-        # Call the parent update function
-        return super().update()
+        return None
 
     def draw_post(self):
         """Draw the current post"""
@@ -324,4 +402,9 @@ class StateFeed(State):
         super().draw()
 
     def cleanup(self):
-        return super().cleanup()
+        """Cleanup the state"""
+        # We keep the feed but reset it's index to 0
+        # This MIGHT be annoying and I might remove it
+        self.feed.post_index = 0
+        # Call the parent cleanup function
+        super().cleanup()

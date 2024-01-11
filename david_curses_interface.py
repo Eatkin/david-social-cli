@@ -67,13 +67,6 @@ def clear_row(stdscr, row):
     _, width = curses.initscr().getmaxyx()
     stdscr.addstr(row, 0, " " * (width - 1), colours.WHITE_BLACK)
 
-def change_state(state, new_state):
-    """Changes the state"""
-    state.cleanup()
-    del state
-    # new_state should be an initialised state
-    return new_state
-
 def main(stdscr):
     """Main function"""
     curses.curs_set(0)
@@ -107,12 +100,12 @@ def main(stdscr):
         # If it returns a state then we need to change state
         # Otherwise it will return None and we continue normal execution
         try:
-            update = state.update()
-            if update is not None:
-                state = change_state(state, update)
+            new_state = state.update()
+            if new_state is not None:
+                state = new_state
+                logging.info(f"Changed state to {state}")
         except Exception as e:
             logging.exception(e)
-            exit(1)
 
         # Draw the state
         # Curses always fails when drawing, so we need to catch the exception

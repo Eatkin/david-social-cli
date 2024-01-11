@@ -299,6 +299,26 @@ class Feed():
         # The window is a parameter which we can hold on to if we wish to load more posts
         self.posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
 
+        # Now we've got our feed let's see if there's anything in it
+        # (Also handles failure to retrieve posts)
+        if len(self.posts) == 0 or self.posts is None:
+            # Create a post saying there are no posts
+            post = {
+                "id": "0",
+                "username": "David",
+                "content": "There are no posts to display also David didn't actually post this",
+                "likes": 0,
+                "avi": "",
+                "attached_image": "",
+                "userid": None,
+                "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "reply_to": None,
+                "liked_by": [],
+                "ncomments": 0,
+                "david_selection": False
+            }
+            self.posts = [post]
+
         self.post_index = 0
 
     def get_post(self, index):
