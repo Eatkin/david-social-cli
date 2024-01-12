@@ -12,9 +12,6 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Fix loading replies because I broke it
-# TODO: In a reply thread we should display the parent post at the top
-# TODO: Something like: "Replies to @username: content"
 # TODO: Add a confirmation for the text entry class, or error message if it fails, or prompt if message is blank
 # TODO: Check notifications
 # TODO: View profile
@@ -22,7 +19,6 @@ import scripts.env_utils as eu
 # TODO: Delete post if it is our post (probably rly annoying to do)
 # TODO: Search users?
 # TODO: Some of the kaomoji doesn't display properly, try triple quotes maybe
-# TODO: ASCII art loads before menu in feed display, so menu doesn't show until after ascii art is loaded
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
@@ -292,6 +288,13 @@ class StateFeed(State):
         # Parent is used for replying to a post
         self.parent = parent
 
+        self.parent_content = None
+
+        # Make a request to the api to get the parent post from ID
+        if self.parent is not None:
+            response = david_api.query_api("get-post", [self.parent], self.session.cookies)
+            self.parent_content = f"@{response['username']}: {response['content']}"
+
         # Set up the feed
         self.feed_type = feed_type
         self.feed_key = FeedType.BOOTLICKER if self.feed_type == "Bootlicker" else FeedType.GLOBAL if self.feed_type == "Global" else self.parent
@@ -301,7 +304,6 @@ class StateFeed(State):
             self.logger.info(f"Feed {self.feed_key} already exists, using cached feed")
             self.feed = feeds[self.feed_key]
         else:
-            self.logger.info(f"Feed {self.feed_key} does not exist, creating new feed")
             self.feed = Feed(self.session, self.feed_type, self.additional_params)
             # Add our feed to the feeds dictionary
             feeds[self.feed_key] = self.feed
@@ -536,6 +538,13 @@ class StateFeed(State):
             self.stdscr.addstr("*:･ﾟ✧*:･ﾟ✧ David Selection\n", self.colours.YELLOW_BLACK | curses.A_BLINK)
             self.stdscr.addstr(linebreak)
 
+        # If we're in a reply thread display the parent post
+        if self.parent_content is not None:
+            self.stdscr.addstr("Replying to: \n", self.colours.GREEN_BLACK)
+            self.stdscr.addstr(f"{self.parent_content.split(' ')[0]} ", self.colours.YELLOW_BLACK)
+            self.stdscr.addstr(f"{' '.join(self.parent_content.split(' ')[1:])}\n")
+            self.stdscr.addstr(linebreak)
+
         # Username and timestamp
         timestamp = self.current_post['timestamp']
         timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -543,7 +552,9 @@ class StateFeed(State):
         self.stdscr.addstr(f"@{self.current_post['username']} ", self.colours.YELLOW_BLACK)
         self.stdscr.addstr("posted at ")
         self.stdscr.addstr(f"{date_time}\n", self.colours.GREEN_BLACK)
-        self.stdscr.addstr(linebreak)
+        # Removing this line break cause it looks weird
+        # self.stdscr.addstr(linebreak)
+        self.stdscr.addstr("\n")
 
         # Post content
         # Skip if blank
