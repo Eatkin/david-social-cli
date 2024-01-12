@@ -21,6 +21,8 @@ TODO: Why does pressing escape pause everything?
 
 # Initialise curses
 stdscr = curses.initscr()
+curses.noecho()
+curses.cbreak()
 curses.start_color()
 # Initialise the colours
 colours = ColourConstants()
@@ -111,7 +113,7 @@ def main(stdscr):
         except Exception as e:
             # Only enable this if you REALLY NEED TO DEBUG
             # Because otherwise it will print a billion errors if you try resize the window
-            logging.exception(e)
+            # logging.exception(e)
             pass
 
         stdscr.refresh()
@@ -119,8 +121,7 @@ def main(stdscr):
 
         # Sleep interval seems to prevent flickering
         # We ignore this if we're in text input mode
-        if not isinstance(state, StateTextEntry):
-            sleep(0.1)
+        sleep(0.1)
 
 
 wrapper(main)

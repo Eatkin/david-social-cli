@@ -2,6 +2,7 @@ import curses
 import os
 import requests
 from random import choice
+from math import floor
 from io import BytesIO
 from PIL import Image
 from enum import Enum
@@ -141,7 +142,7 @@ class StateMain(State):
                     'type': 'state_change',
                     'function': self.advance_state,
                     'state': StateTextEntry,
-                    'args': (self.stdscr, self.session, self.logger, TextEntryType.NEW_POST)
+                    'args': (self.stdscr, self.session, self.logger, TextEntryType.NEW_POST, 0)
                 },
                 {
                     'type': 'state_change',
@@ -662,7 +663,8 @@ class StateTextEntry(State):
         self.logger = logger
 
         self.stdscr.nodelay(True)
-        curses.cbreak()
+
+        self.params = [params] if params is not None else [0]
 
         self.prompt = "Blah blah blah bloo bloo bloo"
         # Choose an API endpoint based on the type
@@ -671,15 +673,13 @@ class StateTextEntry(State):
             self.prompt = "Write stuff to your friends :3"
 
             # If we provide a param then we are replying to a post, if not we are posting a new post (so set it to 0)
-            if params is None:
-                params = [0]
-            else:
+            if type == TextEntryType.REPLY:
                 self.prompt = "Reply to this post :3"
         elif type == TextEntryType.TICKER_UPDATE:
             self.api_endpoint = "public-set-ticker-text"
             self.prompt = "Update the ticker :3"
-            # We don't need any params for this
-            params = []
+            # We don't need any params for this so remove them
+            self.params = []
 
         # Our text entry box
         self.text_entry = ""
@@ -691,8 +691,19 @@ class StateTextEntry(State):
         self.colours = ColourConstants()
         self.colours.init_colours()
 
+        self.callback = None
+
+    def blank_row(self, row):
+        """Draws spaces across the row"""
+        # Get avaiable space
+        _, cols = curses.initscr().getmaxyx()
+        # Draw spaces
+        self.stdscr.addstr(row, 0, " " * cols)
+
     def update(self):
-        super().update()
+        # This allows us to return a value from the draw function where all the logic is
+        if self.callback is not None:
+            return self.callback()
 
     def submit(self):
         # Poke the API with the text and additional params
@@ -700,11 +711,12 @@ class StateTextEntry(State):
         # Could probably add some sort of confirmation here
 
         # Regress state
-        self.regress_state()
+        return self.regress_state()
 
+    # TODO: Feedback if submitted post is blank
+    # TODO: Trying to blank more than one row causes flickering, just blank the row we're on because that's the only one that will chagne
     def draw(self):
         """Draw the state"""
-        curses.curs_set(1)
         # Draw the prompt centred
         rows, cols = curses.initscr().getmaxyx()
         cols -= 1
@@ -713,46 +725,61 @@ class StateTextEntry(State):
         # Draw it
         self.stdscr.addstr(f"\n{' ' * prompt_offset}{self.prompt}\n", self.colours.GREEN_BLACK)
         # Then say press esc to go back
-        esc_offset = round(0.5 * (cols - len("Press Esc to cancel")))
+        esc_message = "Press Esc to cancel"
+        esc_offset = round(0.5 * (cols - len(esc_message)))
+        self.stdscr.addstr(f"{' ' * esc_offset}{esc_message}\n", self.colours.RED_BLACK)
 
-        # Now draw the text entry box for user input
-        key = self.stdscr.getch()
+        # Get the y position to draw at
+        y = curses.initscr().getyx()[0]
 
-        # If we press escape then we want to cancel
-        if key == 27:
-            n = self.stdscr.getch()
-            if n == -1:
-                # Escape key
-                self.regress_state()
-        # If we press enter then we want to submit
-        elif key == curses.KEY_ENTER:
-            # Check if we have any text
-            if self.text_entry != "":
-                self.submit()
-        # Backspace
-        elif key == curses.KEY_BACKSPACE:
-            if len(self.text_entry) > 0:
-                self.text_entry = self.text_entry[:-1]
-        # Otherwise we can just get some text input
-        elif key != -1:
-            try:
-                self.text_entry += chr(key)
-            except Exception as e:
-                self.logger.info(f"Error getting text input {key}")
-                self.logger.info(e)
+        # Enter text gathering loop
+        while True:
+            # Get updated available space
+            rows, cols = curses.initscr().getmaxyx()
+            cols -= 1
 
-        # Also draw the text entry box
-        self.stdscr.addstr(f"\n{' ' * prompt_offset}{self.text_entry}\n", self.colours.YELLOW_BLACK)
+            # Get any key presses
+            key = self.stdscr.getch()
+
+            # If we press escape then we want to cancel
+            if key == 27:
+                n = self.stdscr.getch()
+                self.callback = self.regress_state
+                break
+            # If we press enter then we want to submit
+            # Curses says enter is 343, but it's actually 10 apparently
+            elif key == curses.KEY_ENTER or key == 10:
+                # Check if we have any text
+                if self.text_entry != "":
+                    self.callback = self.submit
+                    break
+            elif key == curses.KEY_BACKSPACE:
+                if len(self.text_entry) > 0:
+                    self.text_entry = self.text_entry[:-1]
+            elif key != -1:
+                # Make sure key is in the appropriate range
+                if key >= 32 and key <= 255:
+                    self.text_entry += chr(key)
+
+            # draw the text box content
+            box_centre = round(0.5 * (cols - len(self.text_entry)))
+            box_centre = max(0, box_centre)
+            # Blank everything cause our comment may span multiple lines
+            lines = floor(len(self.text_entry) / cols)
+            self.blank_row(y + lines)
+            self.stdscr.addstr(y, box_centre, f"{self.text_entry}", self.colours.YELLOW_BLACK)
 
         # Inherit the draw function
-        super().draw()
+        # Actually don't because there is no menu to draw
+        # And also it breaks things lol
+        # super().draw()
 
-        curses.curs_set(0)
+
+
 
     def cleanup(self):
         """Cleanup the state"""
         # Set nodelay back to false
         self.stdscr.nodelay(False)
-        curses.nocbreak()
         # Inherit the cleanup function
         super().cleanup()
