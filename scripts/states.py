@@ -12,6 +12,9 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
+# TODO: Replying to a reply feed should reply to the replies parent post
+# TODO: ^ Probably involves adding a parent=None to the StateFeed class and we inherit the parent post ID from the parent if parent is None
+# TODO: ^ That's confusing but I know what I mean
 # TODO: Add a confirmation for the text entry class, or error message if it fails, or prompt if message is blank
 # TODO: Check notifications
 # TODO: View profile
@@ -19,6 +22,7 @@ import scripts.env_utils as eu
 # TODO: Delete post if it is our post (probably rly annoying to do)
 # TODO: Search users?
 # TODO: Some of the kaomoji doesn't display properly, try triple quotes maybe
+# TODO: ASCII art loads before menu in feed display, so menu doesn't show until after ascii art is loaded
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
@@ -272,9 +276,7 @@ class StateExit(State):
         del self.menu
 
 class StateFeed(State):
-    # TODO: Reply to post (needs a reply state)
-    # TODO: Option to bootlick a user if we aren't already bootlicking them
-    def __init__(self, stdscr, session, logger, feed_type, additional_params=None):
+    def __init__(self, stdscr, session, logger, feed_type, additional_params=None, parent=None, callback=None):
         """Initialise the state"""
         super().__init__()
 
@@ -282,8 +284,13 @@ class StateFeed(State):
         self.session = session
         self.logger = logger
 
+        self.callback = callback
+
         # Used for either post ID or username
         self.additional_params = additional_params
+
+        # Parent is used for replying to a post
+        self.parent = parent
 
         # Set up the feed
         self.feed_type = feed_type
@@ -350,7 +357,7 @@ class StateFeed(State):
             'type': 'state_change',
             'function': self.advance_state,
             'state': StateFeed,
-            'args': (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'])
+            'args': (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'], self.current_post['id'])
         }
         self.reply_to_post_func = {
             'type': 'state_change',
@@ -361,8 +368,16 @@ class StateFeed(State):
 
     def update_menu_functions(self):
         """Update any menu functions that need updating"""
-        # Update the view replies function to update the post ID
-        self.view_replies_func['args'] = (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'])
+        # Update the reply function to reply to the parent post, not the reply
+        # Define the parent-  we inherit it to prevent replying to replies
+        parent = self.current_post['id'] if self.parent is None else self.parent
+        self.reply_to_post_func['args'] = (self.stdscr, self.session, self.logger, TextEntryType.REPLY, parent, f"@{self.current_post['username']} {self.current_post['content']}")
+        # If we're in a reply thread we add a callback to update the post to the back function
+        if self.feed_type == "Reply" and state_history[-1].__class__.__name__ == "StateFeed":
+            par_state = state_history[-1]
+            self.back_func['args'] = [par_state.update_post]
+        else:
+            self.back_func['args'] = []
 
     def update_menu(self):
         """Updates the menu"""
@@ -397,7 +412,8 @@ class StateFeed(State):
             self.menu.update_menu("Like", self.like_func, self.menu.get_num_items())
 
         # If there are replies then append with "View Replies"
-        if self.current_post['ncomments'] > 0:
+        # But only if we are NOT on a reply thread
+        if self.current_post['ncomments'] > 0 and self.parent is None:
             self.menu.update_menu("View Replies", self.view_replies_func, self.menu.get_num_items())
 
         if self.current_post['attached_image'] != "":
@@ -707,6 +723,9 @@ class StateTextEntry(State):
 
         self.post_body = post_body
 
+        # Our text entry box
+        self.text_entry = ""
+
         self.prompt = "Blah blah blah bloo bloo bloo"
         # Choose an API endpoint based on the type
         if type == TextEntryType.NEW_POST or type == TextEntryType.REPLY:
@@ -716,6 +735,8 @@ class StateTextEntry(State):
             # If we provide a param then we are replying to a post, if not we are posting a new post (so set it to 0)
             if type == TextEntryType.REPLY:
                 self.prompt = "Reply to this post :3"
+                # Also fill in @username for text entry
+                self.text_entry = post_body.split(" ")[0] + " "
         elif type == TextEntryType.TICKER_UPDATE:
             self.api_endpoint = "public-set-ticker-text"
             self.prompt = "Update the ticker :3"
@@ -724,8 +745,6 @@ class StateTextEntry(State):
 
         self.type = type
 
-        # Our text entry box
-        self.text_entry = ""
 
         # Create a blank menu (we won't need one)
         self.menu = Menu(stdscr, [], [])
@@ -747,32 +766,40 @@ class StateTextEntry(State):
     def update(self):
         # This allows us to return a value from the draw function where all the logic is
         if self.callback is not None:
-            # This will erase self.callback to prevent it being called again
-            # Sometimes shit breaks and it'll spam the server with post requests
-            temp = self.callback
-            self.callback = None
-            return temp
+            return self.callback()
 
     def submit(self):
-        # Poke the API with the text and additional params
-        response = david_api.query_api(self.api_endpoint, [self.text_entry] + self.params, cookies=self.session.cookies)
-        # Could probably add some sort of confirmation here
+        try:
+            # Poke the API with the text and additional params
+            response = david_api.query_api(self.api_endpoint, [self.text_entry] + self.params, cookies=self.session.cookies)
+            # Could probably add some sort of confirmation here
 
-        # If we are posting a new message and bootlicker/global feeds are in the feeds dictionary then we need to update them
-        if self.type == TextEntryType.NEW_POST:
-            if FeedType.BOOTLICKER in feeds:
-                feeds[FeedType.BOOTLICKER].update()
-            if FeedType.GLOBAL in feeds:
-                feeds[FeedType.GLOBAL].update()
+            # If we are posting a new message and bootlicker/global feeds are in the feeds dictionary then we need to update them
+            if self.type == TextEntryType.NEW_POST:
+                if FeedType.BOOTLICKER in feeds:
+                    feeds[FeedType.BOOTLICKER].update()
+                if FeedType.GLOBAL in feeds:
+                    feeds[FeedType.GLOBAL].update()
 
-        # Regress state
-        par_state = state_history[-1]
-        if self.type == TextEntryType.TICKER_UPDATE:
-            self.callback_args = [par_state.update_ticker]
+            # Regress state
+            par_state = state_history[-1]
+            if self.type == TextEntryType.TICKER_UPDATE:
+                self.callback_args = [par_state.update_ticker]
 
-        if self.type == TextEntryType.REPLY:
-            self.callback_args = [par_state.update_post]
-        return self.regress_state(*self.callback_args)
+            if self.type == TextEntryType.REPLY:
+                self.callback_args = [par_state.update_post]
+                # We also want to update the reply thread
+                try:
+                    feeds[self.params[0]].update()
+                except Exception as e:
+                    # This sometimes throws a key error I think
+                    # It doesn't really matter cause everything seems to work properly with the try/except
+                    self.logger.error(f"Error updating reply thread: {e}")
+            return self.regress_state(*self.callback_args)
+        except Exception as e:
+            # This ensures we don't continuously try to submit the post
+            self.logger.error(f"Error submitting post: {e}")
+            return self.regress_state()
 
     # TODO: Feedback if submitted post is blank
     # TODO: Trying to blank more than one row causes flickering, just blank the row we're on because that's the only one that will chagne
