@@ -12,17 +12,10 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Text entry class for posting/replying/ticker update
-# TODO: Add a confirmation for this class
-# TODO: Add ticker updating to this
-# TODO: Add callbacks to classes
+# TODO: Add a confirmation for the text entry class, or error message if it fails, or prompt if message is blank
+# TODO: Add callbacks to classes - we should be able to add a callback so we can e.g. update the ticker on main screen when we update it
+# TODO: Add a reply option to posts
 # TODO: Maybe have the post we're replying to at the top of the text entry box for replies
-
-# TODO: Add a ticker update state
-# TODO: Remember to check for conditions for when the ticker update is invalid (see what the api returns)
-# TODO: Remember to update ticker in StateMain() if we are on the ticker update state (I have no idea how to do this rn, states can't communicate with each other)
-# TODO: ^ MAYBE an optional callback function can be included in the standard dictionary for menu items
-# TODO: Add a cat petting state
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
@@ -117,7 +110,7 @@ class StateMain(State):
         self.david_ascii = None
 
         # Initialise the menu
-        menu_items = ["Bootlicker Feed", "Global Feed", "Pet the Cat", "New Post", "Pet Cat", "Exit", ]
+        menu_items = ["Bootlicker Feed", "Global Feed", "Pet the Cat", "New Post", "Update Ticker", "Exit", ]
         menu_states = [
                 {
                     'type': 'state_change',
@@ -131,7 +124,6 @@ class StateMain(State):
                     'state': StateFeed,
                     'args': (self.stdscr, self.session, self.logger, "Global")
                 },
-                # Placeholders
                 {
                     'type': 'state_change',
                     'function': self.advance_state,
@@ -147,8 +139,8 @@ class StateMain(State):
                 {
                     'type': 'state_change',
                     'function': self.advance_state,
-                    'state': StateExit,
-                    'args': (self.stdscr, self.session, self.logger)
+                    'state': StateTextEntry,
+                    'args': (self.stdscr, self.session, self.logger, TextEntryType.TICKER_UPDATE, None)
                 },
                 {
                     'type': 'state_change',
@@ -733,7 +725,7 @@ class StateTextEntry(State):
         y = curses.initscr().getyx()[0]
 
         # Enter text gathering loop
-        while True:
+        while self.callback is None:
             # Get updated available space
             rows, cols = curses.initscr().getmaxyx()
             cols -= 1
@@ -748,7 +740,7 @@ class StateTextEntry(State):
                 break
             # If we press enter then we want to submit
             # Curses says enter is 343, but it's actually 10 apparently
-            elif key == curses.KEY_ENTER or key == 10:
+            elif key == curses.KEY_ENTER or key == 10 or key == 13:
                 # Check if we have any text
                 if self.text_entry != "":
                     self.callback = self.submit
@@ -756,6 +748,10 @@ class StateTextEntry(State):
             elif key == curses.KEY_BACKSPACE:
                 if len(self.text_entry) > 0:
                     self.text_entry = self.text_entry[:-1]
+                    # Blank everything cause our comment may span multiple lines
+                    # Only need to do this after we've deleted a character big brain time lol
+                    lines = floor(len(self.text_entry) / cols)
+                    self.blank_row(y + lines)
             elif key != -1:
                 # Make sure key is in the appropriate range
                 if key >= 32 and key <= 255:
@@ -764,9 +760,6 @@ class StateTextEntry(State):
             # draw the text box content
             box_centre = round(0.5 * (cols - len(self.text_entry)))
             box_centre = max(0, box_centre)
-            # Blank everything cause our comment may span multiple lines
-            lines = floor(len(self.text_entry) / cols)
-            self.blank_row(y + lines)
             self.stdscr.addstr(y, box_centre, f"{self.text_entry}", self.colours.YELLOW_BLACK)
 
         # Inherit the draw function
