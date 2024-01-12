@@ -237,6 +237,8 @@ class StateMain(State):
 class StateExit(State):
     def __init__(self, stdscr, session, logger):
         """Initialise the state"""
+        super().__init__()
+
         self.logger = logger
         self.logger.info('initialising StateExit')
         self.stdscr = stdscr
@@ -271,6 +273,8 @@ class StateFeed(State):
     # TODO: Option to bootlick a user if we aren't already bootlicking them
     def __init__(self, stdscr, session, logger, feed_type, additional_params=None):
         """Initialise the state"""
+        super().__init__()
+
         self.stdscr = stdscr
         self.session = session
         self.logger = logger
@@ -345,6 +349,12 @@ class StateFeed(State):
             'state': StateFeed,
             'args': (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'])
         }
+        self.reply_to_post_func = {
+            'type': 'state_change',
+            'function': self.advance_state,
+            'state': StateTextEntry,
+            'args': (self.stdscr, self.session, self.logger, TextEntryType.REPLY, self.current_post['id'], f"@{self.current_post['username']} {self.current_post['content']}")
+        }
 
     def update_menu_functions(self):
         """Update any menu functions that need updating"""
@@ -389,6 +399,9 @@ class StateFeed(State):
 
         if self.current_post['attached_image'] != "":
             self.menu.update_menu("View Attached Image", self.view_image_func, self.menu.get_num_items())
+
+        # Add a reply option indiscriminately
+        self.menu.update_menu("Reply", self.reply_to_post_func, self.menu.get_num_items())
 
         # Now finally add the back option
         self.menu.update_menu("Back", self.back_func, self.menu.get_num_items())
@@ -464,6 +477,14 @@ class StateFeed(State):
         # Update feed object
         self.feed.posts[self.feed.post_index]['liked_by'].append(self.username)
 
+        self.update_menu()
+        return None
+
+    def update_post(self):
+        """Updates the current post"""
+        self.logger.info(f"Updating post {self.current_post['id']}")
+        self.current_post = self.feed.update_post(self.feed.post_index)
+        # Update the menu too
         self.update_menu()
         return None
 
@@ -571,6 +592,8 @@ class StateFeed(State):
 class StatePetCat(State):
     def __init__(self, stdscr, session, logger):
         """Initialise the state"""
+        super().__init__()
+
         self.stdscr = stdscr
         self.session = session
         self.logger = logger
@@ -670,7 +693,7 @@ class StateTextEntry(State):
     - It won't regress state upon pressing enter
     - Add a Textbox element from curses.textpad to try instead of raw input
     - Centre the input"""
-    def __init__(self, stdscr, session, logger, type=TextEntryType.NEW_POST, params=None):
+    def __init__(self, stdscr, session, logger, type=TextEntryType.NEW_POST, params=None, post_body=None):
         self.stdscr = stdscr
         self.session = session
         self.logger = logger
@@ -678,6 +701,8 @@ class StateTextEntry(State):
         self.stdscr.nodelay(True)
 
         self.params = [params] if params is not None else [0]
+
+        self.post_body = post_body
 
         self.prompt = "Blah blah blah bloo bloo bloo"
         # Choose an API endpoint based on the type
@@ -719,24 +744,31 @@ class StateTextEntry(State):
     def update(self):
         # This allows us to return a value from the draw function where all the logic is
         if self.callback is not None:
-            # If we are posting a new message and bootlicker/global feeds are in the feeds dictionary then we need to update them
-            if self.type == TextEntryType.NEW_POST:
-                if FeedType.BOOTLICKER in feeds:
-                    feeds[FeedType.BOOTLICKER].update()
-                if FeedType.GLOBAL in feeds:
-                    feeds[FeedType.GLOBAL].update()
-
-            return self.callback()
+            # This will erase self.callback to prevent it being called again
+            # Sometimes shit breaks and it'll spam the server with post requests
+            temp = self.callback
+            self.callback = None
+            return temp
 
     def submit(self):
         # Poke the API with the text and additional params
         response = david_api.query_api(self.api_endpoint, [self.text_entry] + self.params, cookies=self.session.cookies)
         # Could probably add some sort of confirmation here
 
+        # If we are posting a new message and bootlicker/global feeds are in the feeds dictionary then we need to update them
+        if self.type == TextEntryType.NEW_POST:
+            if FeedType.BOOTLICKER in feeds:
+                feeds[FeedType.BOOTLICKER].update()
+            if FeedType.GLOBAL in feeds:
+                feeds[FeedType.GLOBAL].update()
+
         # Regress state
+        par_state = state_history[-1]
         if self.type == TextEntryType.TICKER_UPDATE:
-            par_state = state_history[-1]
             self.callback_args = [par_state.update_ticker]
+
+        if self.type == TextEntryType.REPLY:
+            self.callback_args = [par_state.update_post]
         return self.regress_state(*self.callback_args)
 
     # TODO: Feedback if submitted post is blank
@@ -754,6 +786,13 @@ class StateTextEntry(State):
         esc_message = "Press Esc to cancel"
         esc_offset = round(0.5 * (cols - len(esc_message)))
         self.stdscr.addstr(f"{' ' * esc_offset}{esc_message}\n", self.colours.RED_BLACK)
+
+        # If we're replying, add the post we're replying to
+        if self.type == TextEntryType.REPLY:
+            self.stdscr.addstr("Replying to: ")
+            self.stdscr.addstr(f"{self.post_body.split(' ')[0]} ", self.colours.YELLOW_BLACK)
+            self.stdscr.addstr(" ")
+            self.stdscr.addstr(" ".join(self.post_body.split(' ')[1:]) + "\n")
 
         # Get the y position to draw at
         y = curses.initscr().getyx()[0]

@@ -344,6 +344,15 @@ class Feed():
         """Get a post from the feed"""
         return self.posts[index]
 
+    def update_post(self, index):
+        """Update a post in the feed"""
+        # Query the api
+        post = david_api.query_api("get-post", params=[self.get_post_id(index)], cookies=self.session.cookies)
+        # Replace the post in the feed
+        self.posts[index] = post
+
+        return post
+
     def get_post_id(self, index):
         """Get the post id from the feed"""
         return self.posts[index]["id"]
@@ -365,21 +374,8 @@ class Feed():
     def update(self):
         """Update the feed"""
         # Query the api
-        new_posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
-        # Check if there's any new posts
-        # Find the first post that isn't a David Selection in self.posts
-        i = 0
-        while self.posts[i]["david_selection"]:
-            i += 1
-            # Failsafe to prevent infinite loop
-            if i > len(self.posts):
-                return False
-        # Now find any posts in new_posts that aren't in self.posts
-        new_posts = new_posts[:new_posts.index(self.posts[i])]
-        # Filter out any David Selections
-        new_posts = [post for post in new_posts if not post["david_selection"]]
-        # Now we can append the new posts to the old posts
-        self.posts = new_posts + self.posts
+        # I did a load of dumb shit here but actually this is all I really need to do lol
+        self.posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
 
     def load_more_posts(self):
         """Load more posts
