@@ -11,12 +11,11 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Add pet cat state
-
-# TODO: Add a text entry parent class for text entry states
-# TODO: Add subclasses for text entry states to determine what to do with the text
-# TODO: This will work for posting messages, updating ticker and replying to posts
-# TODO: (replying is just posting with a nonzero replyTo parameter)
+# TODO: Text entry class for posting/replying/ticker update
+# TODO: Add a confirmation for this class
+# TODO: Add ticker updating to this
+# TODO: Add callbacks to classes
+# TODO: Maybe have the post we're replying to at the top of the text entry box for replies
 
 # TODO: Add a ticker update state
 # TODO: Remember to check for conditions for when the ticker update is invalid (see what the api returns)
@@ -35,6 +34,12 @@ feeds = {}
 class FeedType(Enum):
     BOOTLICKER = 0
     GLOBAL = 1
+
+# Constants for text entry
+class TextEntryType(Enum):
+    NEW_POST = 0
+    REPLY = 1
+    TICKER_UPDATE = 2
 
 # State history for regressing to a previous state
 state_history = []
@@ -111,7 +116,7 @@ class StateMain(State):
         self.david_ascii = None
 
         # Initialise the menu
-        menu_items = ["Bootlicker Feed", "Global Feed", "Pet the Cat", "Catpets", "Pet Cat", "Exit", ]
+        menu_items = ["Bootlicker Feed", "Global Feed", "Pet the Cat", "New Post", "Pet Cat", "Exit", ]
         menu_states = [
                 {
                     'type': 'state_change',
@@ -135,8 +140,8 @@ class StateMain(State):
                 {
                     'type': 'state_change',
                     'function': self.advance_state,
-                    'state': StateExit,
-                    'args': (self.stdscr, self.session, self.logger)
+                    'state': StateTextEntry,
+                    'args': (self.stdscr, self.session, self.logger, TextEntryType.NEW_POST)
                 },
                 {
                     'type': 'state_change',
@@ -620,8 +625,6 @@ class StatePetCat(State):
 
 
     def draw(self):
-        # Update lines and cols
-        curses.update_lines_cols()
         # Get available space
         rows, cols = curses.initscr().getmaxyx()
         cols -= 1
@@ -645,3 +648,111 @@ class StatePetCat(State):
 
         # Inherit the draw function
         super().draw()
+
+class StateTextEntry(State):
+    """
+    TODO:
+    - God this fucking sucks, the text entry is slow
+    - It won't regress state upon pressing enter
+    - Add a Textbox element from curses.textpad to try instead of raw input
+    - Centre the input"""
+    def __init__(self, stdscr, session, logger, type=TextEntryType.NEW_POST, params=None):
+        self.stdscr = stdscr
+        self.session = session
+        self.logger = logger
+
+        self.stdscr.nodelay(True)
+        curses.cbreak()
+
+        self.prompt = "Blah blah blah bloo bloo bloo"
+        # Choose an API endpoint based on the type
+        if type == TextEntryType.NEW_POST or type == TextEntryType.REPLY:
+            self.api_endpoint = "new-post"
+            self.prompt = "Write stuff to your friends :3"
+
+            # If we provide a param then we are replying to a post, if not we are posting a new post (so set it to 0)
+            if params is None:
+                params = [0]
+            else:
+                self.prompt = "Reply to this post :3"
+        elif type == TextEntryType.TICKER_UPDATE:
+            self.api_endpoint = "public-set-ticker-text"
+            self.prompt = "Update the ticker :3"
+            # We don't need any params for this
+            params = []
+
+        # Our text entry box
+        self.text_entry = ""
+
+        # Create a blank menu (we won't need one)
+        self.menu = Menu(stdscr, [], [])
+
+        # Initialise colours
+        self.colours = ColourConstants()
+        self.colours.init_colours()
+
+    def update(self):
+        super().update()
+
+    def submit(self):
+        # Poke the API with the text and additional params
+        response = david_api.query_api(self.api_endpoint, [self.text_entry] + self.params, cookies=self.session.cookies)
+        # Could probably add some sort of confirmation here
+
+        # Regress state
+        self.regress_state()
+
+    def draw(self):
+        """Draw the state"""
+        curses.curs_set(1)
+        # Draw the prompt centred
+        rows, cols = curses.initscr().getmaxyx()
+        cols -= 1
+        # Centre the prompt
+        prompt_offset = round(0.5 * (cols - len(self.prompt)))
+        # Draw it
+        self.stdscr.addstr(f"\n{' ' * prompt_offset}{self.prompt}\n", self.colours.GREEN_BLACK)
+        # Then say press esc to go back
+        esc_offset = round(0.5 * (cols - len("Press Esc to cancel")))
+
+        # Now draw the text entry box for user input
+        key = self.stdscr.getch()
+
+        # If we press escape then we want to cancel
+        if key == 27:
+            n = self.stdscr.getch()
+            if n == -1:
+                # Escape key
+                self.regress_state()
+        # If we press enter then we want to submit
+        elif key == curses.KEY_ENTER:
+            # Check if we have any text
+            if self.text_entry != "":
+                self.submit()
+        # Backspace
+        elif key == curses.KEY_BACKSPACE:
+            if len(self.text_entry) > 0:
+                self.text_entry = self.text_entry[:-1]
+        # Otherwise we can just get some text input
+        elif key != -1:
+            try:
+                self.text_entry += chr(key)
+            except Exception as e:
+                self.logger.info(f"Error getting text input {key}")
+                self.logger.info(e)
+
+        # Also draw the text entry box
+        self.stdscr.addstr(f"\n{' ' * prompt_offset}{self.text_entry}\n", self.colours.YELLOW_BLACK)
+
+        # Inherit the draw function
+        super().draw()
+
+        curses.curs_set(0)
+
+    def cleanup(self):
+        """Cleanup the state"""
+        # Set nodelay back to false
+        self.stdscr.nodelay(False)
+        curses.nocbreak()
+        # Inherit the cleanup function
+        super().cleanup()

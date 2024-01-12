@@ -12,7 +12,7 @@ import scripts.string_utils as su
 from scripts.feed_utils import print_feed
 from scripts.ds_components import Menu, Ticker, AsciiImage
 from scripts.colours import ColourConstants
-from scripts.states import State, StateMain, StateExit
+from scripts.states import State, StateMain, StateTextEntry
 
 """
 TODO: Why does ASCII art flicker in full screen? Maybe something to do with curses failing to draw?
@@ -111,14 +111,16 @@ def main(stdscr):
         except Exception as e:
             # Only enable this if you REALLY NEED TO DEBUG
             # Because otherwise it will print a billion errors if you try resize the window
-            # logging.exception(e)
+            logging.exception(e)
             pass
 
         stdscr.refresh()
         curses.doupdate()
 
         # Sleep interval seems to prevent flickering
-        sleep(0.1)
+        # We ignore this if we're in text input mode
+        if not isinstance(state, StateTextEntry):
+            sleep(0.1)
 
 
 wrapper(main)
