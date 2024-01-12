@@ -14,19 +14,13 @@ from scripts.ds_components import Menu, Ticker, AsciiImage
 from scripts.colours import ColourConstants
 from scripts.states import State, StateMain, StateTextEntry
 
-"""
-TODO: Why does ASCII art flicker in full screen? Maybe something to do with curses failing to draw?
-TODO: Why does pressing escape pause everything?
-"""
+# TODO: Why does pressing escape pause everything?
 
 # Initialise curses
 stdscr = curses.initscr()
 curses.noecho()
 curses.cbreak()
 curses.start_color()
-# Initialise the colours
-colours = ColourConstants()
-colours.init_colours()
 
 # Set up logging
 def logging_init():
@@ -58,11 +52,6 @@ def login():
     username, password = eu.parse_secrets()
     session = david_api.query_api("login", [username, password])
     return session
-
-def clear_row(stdscr, row):
-    """Blank out the specified row"""
-    _, width = curses.initscr().getmaxyx()
-    stdscr.addstr(row, 0, " " * (width - 1), colours.WHITE_BLACK)
 
 def main(stdscr):
     """Main function"""
@@ -107,20 +96,18 @@ def main(stdscr):
         # Draw the state
         # Curses always fails when drawing, so we need to catch the exception
         stdscr.clear()
-        curses.curs_set(0)
         try:
             state.draw()
         except Exception as e:
             # Only enable this if you REALLY NEED TO DEBUG
             # Because otherwise it will print a billion errors if you try resize the window
-            logging.exception(e)
+            # logging.exception(e)
             pass
 
         stdscr.refresh()
         curses.doupdate()
 
         # Sleep interval seems to prevent flickering
-        # We ignore this if we're in text input mode
         sleep(0.1)
 
 

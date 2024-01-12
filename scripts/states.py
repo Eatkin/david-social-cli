@@ -13,9 +13,12 @@ from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
 # TODO: Add a confirmation for the text entry class, or error message if it fails, or prompt if message is blank
-# TODO: Add callbacks to classes - we should be able to add a callback so we can e.g. update the ticker on main screen when we update it
-# TODO: Add a reply option to posts
-# TODO: Maybe have the post we're replying to at the top of the text entry box for replies
+# TODO: Check notifications
+# TODO: View profile
+# TODO: Bootlick user if we aren't already bootlicking them
+# TODO: Delete post if it is our post (probably rly annoying to do)
+# TODO: Search users?
+# TODO: Some of the kaomoji doesn't display properly, try triple quotes maybe
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
