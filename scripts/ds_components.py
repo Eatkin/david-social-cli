@@ -295,7 +295,7 @@ response json structure is a list of dictionaries with keys:
 - david_selection
 """
 class Feed():
-    def __init__(self, session, type="Bootlicker", user_feed=None):
+    def __init__(self, session, type="Bootlicker", additional_params=None):
         """Create feed, type can be Bootlicker or Global"""
         # TODO: Handling of user feeds and reply threads
         # Fetch posts based on type
@@ -309,7 +309,10 @@ class Feed():
             self.params = [1]
         elif self.type == "User":
             self.api_route = "user-posts"
-            self.params = [user_feed]
+            self.params = [additional_params]
+        elif self.type == "Reply":
+            self.api_route = "replies"
+            self.params = [additional_params]
 
         # Query the api
         # The window is a parameter which we can hold on to if we wish to load more posts
@@ -366,7 +369,7 @@ class Feed():
             self.params[0] += 50
         elif self.type == "Global":
             self.params[0] += 1
-        elif self.type == "User":
+        elif self.type == "User" or self.type == "Reply":
             return False
 
         # Query the api with the new window size

@@ -242,38 +242,37 @@ class StateExit(State):
         del self.menu
 
 class StateFeed(State):
-    # TODO: ASCII art for attached images to fill space (NOT TESTED)
-    # TODO: View attached image (needs an image viewer state plus should be able to open it properly as ASCII)
-    # TODO: ^ MAYBE that, but at the moment it's just ascii and open with PIL
     # TODO: Reply to post (needs a reply state)
     # TODO: View replies (can use API request plus create a new feed state for this)
     # TODO: ^ As above, the feed state needs to have a special case for replies
     # TODO: Option to bootlick a user if we aren't already bootlicking them
-    def __init__(self, stdscr, session, logger, feed_type, user_feed=None):
+    def __init__(self, stdscr, session, logger, feed_type, additional_params=None):
         """Initialise the state"""
         self.stdscr = stdscr
         self.session = session
         self.logger = logger
 
-        # This is the name of the user feed we are viewing
-        self.user_feed = user_feed
+        # Used for either post ID or username
+        self.additional_params = additional_params
 
         # Set up the feed
         self.feed_type = feed_type
-        self.feed_key = FeedType.BOOTLICKER if self.feed_type == "Bootlicker" else FeedType.GLOBAL if self.feed_type == "Global" else self.user_feed
+        self.feed_key = FeedType.BOOTLICKER if self.feed_type == "Bootlicker" else FeedType.GLOBAL if self.feed_type == "Global" else self.additional_params
+
+        # This will cache the feed object so we don't have to keep making requests unnecessarily
         if self.feed_key in feeds:
             self.feed = feeds[self.feed_key]
         else:
-            self.feed = Feed(self.session, self.feed_type, self.user_feed)
+            self.feed = Feed(self.session, self.feed_type, self.additional_params)
             # Add our feed to the feeds dictionary
             feeds[self.feed_key] = self.feed
-
-        # Setup menu functions
-        self.setup_menu_functions()
 
         self.menu = Menu(self.stdscr, [], [])
 
         self.current_post = self.feed.get_post(self.feed.post_index)
+
+        # Setup menu functions
+        self.setup_menu_functions()
 
         # Initialise colours
         self.colours = ColourConstants()
@@ -317,6 +316,17 @@ class StateFeed(State):
             'function': self.regress_state,
             'args': []
         }
+        self.view_replies_func = {
+            'type': 'state_change',
+            'function': self.advance_state,
+            'state': StateFeed,
+            'args': (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'])
+        }
+
+    def update_menu_functions(self):
+        """Update any menu functions that need updating"""
+        # Update the view replies function to update the post ID
+        self.view_replies_func['args'] = (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'])
 
     def update_menu(self):
         """Updates the menu"""
@@ -334,6 +344,9 @@ class StateFeed(State):
         # Clear out menu
         self.menu.clear_menu()
 
+        # Update menu functions
+        self.update_menu_functions()
+
         # Now we can add the items back in
         # If we are not on index 0 of the feed then prepend with "Previous post"
         if self.feed.post_index != 0:
@@ -346,6 +359,10 @@ class StateFeed(State):
         # If we have not liked the post then append with "Like"
         if not self.have_liked:
             self.menu.update_menu("Like", self.like_func, self.menu.get_num_items())
+
+        # If there are replies then append with "View Replies"
+        if self.current_post['ncomments'] > 0:
+            self.menu.update_menu("View Replies", self.view_replies_func, self.menu.get_num_items())
 
         if self.current_post['attached_image'] != "":
             self.menu.update_menu("View Attached Image", self.view_image_func, self.menu.get_num_items())
@@ -459,7 +476,7 @@ class StateFeed(State):
         # Post content
         # Skip if blank
         body = self.current_post['content']
-        if body != "":
+        if body.strip() != "":
             self.stdscr.addstr(f"{self.current_post['content']}\n")
             self.stdscr.addstr(linebreak)
 
