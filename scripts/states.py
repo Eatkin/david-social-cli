@@ -12,9 +12,9 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Replying to a reply feed should reply to the replies parent post
-# TODO: ^ Probably involves adding a parent=None to the StateFeed class and we inherit the parent post ID from the parent if parent is None
-# TODO: ^ That's confusing but I know what I mean
+# TODO: Fix loading replies because I broke it
+# TODO: In a reply thread we should display the parent post at the top
+# TODO: Something like: "Replies to @username: content"
 # TODO: Add a confirmation for the text entry class, or error message if it fails, or prompt if message is blank
 # TODO: Check notifications
 # TODO: View profile
@@ -294,12 +294,14 @@ class StateFeed(State):
 
         # Set up the feed
         self.feed_type = feed_type
-        self.feed_key = FeedType.BOOTLICKER if self.feed_type == "Bootlicker" else FeedType.GLOBAL if self.feed_type == "Global" else self.additional_params
+        self.feed_key = FeedType.BOOTLICKER if self.feed_type == "Bootlicker" else FeedType.GLOBAL if self.feed_type == "Global" else self.parent
 
         # This will cache the feed object so we don't have to keep making requests unnecessarily
         if self.feed_key in feeds:
+            self.logger.info(f"Feed {self.feed_key} already exists, using cached feed")
             self.feed = feeds[self.feed_key]
         else:
+            self.logger.info(f"Feed {self.feed_key} does not exist, creating new feed")
             self.feed = Feed(self.session, self.feed_type, self.additional_params)
             # Add our feed to the feeds dictionary
             feeds[self.feed_key] = self.feed
@@ -372,7 +374,13 @@ class StateFeed(State):
         # Define the parent-  we inherit it to prevent replying to replies
         parent = self.current_post['id'] if self.parent is None else self.parent
         self.reply_to_post_func['args'] = (self.stdscr, self.session, self.logger, TextEntryType.REPLY, parent, f"@{self.current_post['username']} {self.current_post['content']}")
+
+        # Update the view replies function to view the replies to the current post
+        self.view_replies_func['args'] = (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'], self.current_post['id'])
+
         # If we're in a reply thread we add a callback to update the post to the back function
+        # Check the class name because it keeps trying to add a callback to StateMain which doesn't have an update_post function so it crashes
+        # This is easier than actually trying to trace this stupid bug
         if self.feed_type == "Reply" and state_history[-1].__class__.__name__ == "StateFeed":
             par_state = state_history[-1]
             self.back_func['args'] = [par_state.update_post]
@@ -572,9 +580,40 @@ class StateFeed(State):
 
         self.stdscr.addstr(linebreak)
 
-        # TODO: Tell the user who has replied to the post
+        # Commenters
         if self.current_post['ncomments'] > 0:
-            commenters = f"{self.current_post['ncomments']} replies"
+            # We don't get who has left a comment from the feed so we have to query the api
+            # (might be slow)
+            if 'commenters' not in self.current_post:
+                response = david_api.query_api("replies", [self.current_post['id']], self.session.cookies)
+                # Cache the replies in the feed cache
+                # Create a feed object first
+                if self.current_post['id'] not in feeds:
+                    feeds[self.current_post['id']] = Feed(self.session, "Reply", self.current_post['id'])
+
+                if response is None:
+                    self.current_post['commenters'] = None
+                else:
+                    self.current_post['commenters'] = [reply['username'] for reply in response]
+                    # Make it a set to remove duplicates
+                    self.current_post['commenters'] = list(set(self.current_post['commenters']))
+            # Then we can join the list of commenters
+            if self.current_post['commenters'] is None:
+                self.current_post['commenters'] = f"{self.current_post['ncomments']} replies"
+            else:
+                try:
+                    num_commenters = len(self.current_post['commenters'])
+                    if num_commenters > 1:
+                        commenters = ", ".join(self.current_post['commenters'][:-1])
+                        commenters += " and "
+                        commenters += self.current_post['commenters'][-1]
+                        commenters += " have replied to this post"
+                    else:
+                        commenters = self.current_post['commenters'][0]
+                        commenters += " has replied to this post"
+                except Exception as e:
+                    self.logger.exception(e)
+                    commenters = f"{self.current_post['ncomments']} replies"
         else:
             commenters = "Nobody has replied to this post, you should be the first! :3"
         self.stdscr.addstr(commenters + "\n")
@@ -706,18 +745,15 @@ class StatePetCat(State):
         super().draw()
 
 class StateTextEntry(State):
-    """
-    TODO:
-    - God this fucking sucks, the text entry is slow
-    - It won't regress state upon pressing enter
-    - Add a Textbox element from curses.textpad to try instead of raw input
-    - Centre the input"""
     def __init__(self, stdscr, session, logger, type=TextEntryType.NEW_POST, params=None, post_body=None):
         self.stdscr = stdscr
         self.session = session
         self.logger = logger
 
+        # Set up Curses for text entry
         self.stdscr.nodelay(True)
+        # Also flush inputs so we don't get a backlog of key presses
+        curses.flushinp()
 
         self.params = [params] if params is not None else [0]
 
@@ -851,8 +887,7 @@ class StateTextEntry(State):
             elif key == curses.KEY_BACKSPACE:
                 if len(self.text_entry) > 0:
                     self.text_entry = self.text_entry[:-1]
-                    # Blank everything cause our comment may span multiple lines
-                    # Only need to do this after we've deleted a character big brain time lol
+                    # Blank out the row we're on so we don't get artifacts
                     lines = floor(len(self.text_entry) / cols)
                     self.blank_row(y + lines)
             elif key != -1:
@@ -869,9 +904,6 @@ class StateTextEntry(State):
         # Actually don't because there is no menu to draw
         # And also it breaks things lol
         # super().draw()
-
-
-
 
     def cleanup(self):
         """Cleanup the state"""
