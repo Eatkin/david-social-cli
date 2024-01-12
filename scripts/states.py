@@ -39,8 +39,16 @@ class TextEntryType(Enum):
 state_history = []
 
 class State():
+    def __init__(self):
+        self.callback = None
+
     def update(self):
         """Update the state"""
+        # Perform one time functions if necessary
+        if self.callback is not None:
+            self.callback()
+            self.callback = None
+
         # Update the menu
         update = self.menu.update()
         if update is None:
@@ -67,25 +75,33 @@ class State():
         # Delete menu
         del self.menu
 
-    def advance_state(self, state):
+    def advance_state(self, state, callback=None):
         """Advance the state"""
         # Add the current state to the history
         state_history.append(self)
 
+        # Set the callback
+        if callback is not None:
+            state.callback = callback
+
         # state is an object so we can just return it
         return state
 
-    def regress_state(self):
+    def regress_state(self, callback=None):
         """Regress the state"""
         # Cleanup
         self.cleanup()
         # Now revert to the previous state
         previous_state = state_history.pop()
+        # Set the callback
+        if callback is not None:
+            previous_state.callback = callback
         return previous_state
 
 class StateMain(State):
-    def __init__(self, stdscr, session, logger):
+    def __init__(self, stdscr, session, logger, callback=None):
         """Initialise the state"""
+        super().__init__()
         self.stdscr = stdscr
         self.session = session
         self.logger = logger
@@ -180,6 +196,11 @@ class StateMain(State):
 
         # Use the ascii image's update function
         self.david_ascii.update()
+
+    def update_ticker(self):
+        """Update the ticker"""
+        # Update the ticker
+        self.ticker.get_ticker()
 
 
     def cleanup(self):
@@ -673,6 +694,8 @@ class StateTextEntry(State):
             # We don't need any params for this so remove them
             self.params = []
 
+        self.type = type
+
         # Our text entry box
         self.text_entry = ""
 
@@ -684,6 +707,7 @@ class StateTextEntry(State):
         self.colours.init_colours()
 
         self.callback = None
+        self.callback_args = []
 
     def blank_row(self, row):
         """Draws spaces across the row"""
@@ -695,6 +719,13 @@ class StateTextEntry(State):
     def update(self):
         # This allows us to return a value from the draw function where all the logic is
         if self.callback is not None:
+            # If we are posting a new message and bootlicker/global feeds are in the feeds dictionary then we need to update them
+            if self.type == TextEntryType.NEW_POST:
+                if FeedType.BOOTLICKER in feeds:
+                    feeds[FeedType.BOOTLICKER].update()
+                if FeedType.GLOBAL in feeds:
+                    feeds[FeedType.GLOBAL].update()
+
             return self.callback()
 
     def submit(self):
@@ -703,7 +734,10 @@ class StateTextEntry(State):
         # Could probably add some sort of confirmation here
 
         # Regress state
-        return self.regress_state()
+        if self.type == TextEntryType.TICKER_UPDATE:
+            par_state = state_history[-1]
+            self.callback_args = [par_state.update_ticker]
+        return self.regress_state(*self.callback_args)
 
     # TODO: Feedback if submitted post is blank
     # TODO: Trying to blank more than one row causes flickering, just blank the row we're on because that's the only one that will chagne

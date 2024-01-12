@@ -163,7 +163,8 @@ class Ticker():
         self.stdscr = stdscr
         # Get the ticker, we default to None
         self.text = None
-        self.text = self.get_ticker()
+        self.text = ""
+        self.get_ticker()
         self.ticker_x = 0
         self.ticker_spacing = max(round(width * 0.2), 2)
         self.t = datetime.now()
@@ -177,11 +178,11 @@ class Ticker():
             # Parse the ticker text - it's in html
             soup = BeautifulSoup(r['tickerText'], "html.parser")
             # Extract the text from the soup
-            return soup.text.strip()
+            self.text = soup.text.strip()
         elif self.text is not None:
-            return self.text
+            return
         else:
-            return "Ticker text not found :("
+            self.text = "Ticker text not found :("
 
 
     def update(self):
@@ -211,7 +212,6 @@ class Ticker():
 
         # Join the ticker back into a string
         self.ticker = "".join(self.ticker)
-
 
     def draw(self):
         """Prints the ticker text with scrolling"""
@@ -361,6 +361,25 @@ class Feed():
     def get_image(self, index):
         """Get the image from a post"""
         return self.posts[index]["attached_image"]
+
+    def update(self):
+        """Update the feed"""
+        # Query the api
+        new_posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
+        # Check if there's any new posts
+        # Find the first post that isn't a David Selection in self.posts
+        i = 0
+        while self.posts[i]["david_selection"]:
+            i += 1
+            # Failsafe to prevent infinite loop
+            if i > len(self.posts):
+                return False
+        # Now find any posts in new_posts that aren't in self.posts
+        new_posts = new_posts[:new_posts.index(self.posts[i])]
+        # Filter out any David Selections
+        new_posts = [post for post in new_posts if not post["david_selection"]]
+        # Now we can append the new posts to the old posts
+        self.posts = new_posts + self.posts
 
     def load_more_posts(self):
         """Load more posts
