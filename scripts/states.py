@@ -1,6 +1,7 @@
 import curses
 import os
 import requests
+from random import choice
 from io import BytesIO
 from PIL import Image
 from enum import Enum
@@ -10,7 +11,12 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Feed state has a divider of "-" between posts, this doesn't get resized if Terminal is resized
+# TODO: Add pet cat state
+
+# TODO: Add a text entry parent class for text entry states
+# TODO: Add subclasses for text entry states to determine what to do with the text
+# TODO: This will work for posting messages, updating ticker and replying to posts
+# TODO: (replying is just posting with a nonzero replyTo parameter)
 
 # TODO: Add a ticker update state
 # TODO: Remember to check for conditions for when the ticker update is invalid (see what the api returns)
@@ -105,7 +111,7 @@ class StateMain(State):
         self.david_ascii = None
 
         # Initialise the menu
-        menu_items = ["Bootlicker Feed", "Global Feed", "Bootlicking", "Catpets", "Pet Cat", "Exit", ]
+        menu_items = ["Bootlicker Feed", "Global Feed", "Pet the Cat", "Catpets", "Pet Cat", "Exit", ]
         menu_states = [
                 {
                     'type': 'state_change',
@@ -123,7 +129,7 @@ class StateMain(State):
                 {
                     'type': 'state_change',
                     'function': self.advance_state,
-                    'state': StateExit,
+                    'state': StatePetCat,
                     'args': (self.stdscr, self.session, self.logger)
                 },
                 {
@@ -243,8 +249,6 @@ class StateExit(State):
 
 class StateFeed(State):
     # TODO: Reply to post (needs a reply state)
-    # TODO: View replies (can use API request plus create a new feed state for this)
-    # TODO: ^ As above, the feed state needs to have a special case for replies
     # TODO: Option to bootlick a user if we aren't already bootlicking them
     def __init__(self, stdscr, session, logger, feed_type, additional_params=None):
         """Initialise the state"""
@@ -457,6 +461,7 @@ class StateFeed(State):
 
     def draw_post(self):
         """Draw the current post"""
+        curses.update_lines_cols()
         linebreak = "-" * (curses.COLS - 1) + "\n"
 
         # If this is a David Selection say so
@@ -543,3 +548,100 @@ class StateFeed(State):
         self.feed.post_index = 0
         # Call the parent cleanup function
         super().cleanup()
+
+class StatePetCat(State):
+    def __init__(self, stdscr, session, logger):
+        """Initialise the state"""
+        self.stdscr = stdscr
+        self.session = session
+        self.logger = logger
+
+        self.cat_kaomoji_list = [
+                                   "ฅ^•ﻌ•^ฅ",
+                                   "/ᐠ - ˕ -マ Ⳋ",
+                                   "•⩊•",
+                                   "/ᐠ. ｡.ᐟ\ᵐᵉᵒʷˎˊ˗",
+                                   "(=^･ω･^=)",
+                                   "ᓚᘏᗢ",
+                                   "ऴिाीeow",
+                                   "        ∧＿∧\n　 (｡･ω･｡)つ━☆・*。\n  ⊂/　     /　   ・゜\n　しーＪ　　　     °。+ * 。　\n　　　　　                      .・゜\n　　　　　                      ゜｡ﾟﾟ･｡･ﾟﾟ。\n　　　　                         　ﾟ。　 　｡ﾟ\n                                              　ﾟ･｡･ﾟ ",
+                                   "∩――――∩\n||     ∧ ﾍ　 ||\n||    (* ´ ｰ`) ZZzz\n|ﾉ^⌒⌒づ`￣  ＼\n(　ノ　　⌒ ヽ ＼\n＼　　||￣￣￣￣￣||\n　 ＼,ﾉ||",
+                                   "≽^- ˕ -^≼",
+                                   "≽ܫ≼",
+                                   "₍^._.^₎ 𐒡",
+                                   "pat pat pat\n　pat pat pat\n  ᕱ⑅ᕱ　pat pat pat\n( ๑•ᴗ• )つ\"__∧\n( つ　 / ( •᷄ω•᷅ ｡)\nＵ — Ｊ  (nnノ)",
+                                   "ㅤ  ∧＿∧\n　(　･∀･)\n　(　つ┳⊃\nε (_)へ⌒ヽﾌ\n (　　(　･ω･)\n ◎―◎   ⊃  ⊃",
+                                   "/ᐠ - ˕ -マ Meaw...",
+                                   "──────▄▀▄─────▄▀▄\n─────▄█░░▀▀▀▀▀░░█▄\n─▄▄──█░░░░░░░░░░░█──▄▄\n█▄▄█─█░░▀░░┬░░▀░░█─█▄▄█",
+                                   "•.,¸,.•*`•.,¸¸,.•*¯ ╭━━━━╮\n•.,¸,.•*¯`•.,¸,.•*¯.|:::::::::: /___/\n•.,¸,.•*¯`•.,¸,.•* <|:::::::::(｡ ●ω●｡)\n•.,¸,.•¯•.,¸,.•╰ * >し------し---Ｊ",
+                                   ]
+
+        self.pet_cat()
+
+        # Create a menu with a back button
+        menu_items = ["Pet it again!", "Back"]
+        menu_functions = [
+            {
+                'type': 'function',
+                'function': self.pet_cat,
+                'args': []
+            },
+            {
+                'type': 'function',
+                'function': self.regress_state,
+                'args': []
+            }
+        ]
+        self.menu = Menu(self.stdscr, menu_items, menu_functions)
+
+        # Initialise colours
+        self.colours = ColourConstants()
+        self.colours.init_colours()
+
+    def pet_cat(self):
+        # We call the api again and get a new kaomoji
+        # Pet the cat
+        response = david_api.query_api("pet-cat", cookies=self.session.cookies)
+
+        if response is None:
+            self.logger.error("pet-cat returned None")
+
+        # Get number of catpets
+        self.catpets = david_api.query_api("get-cat-pets", cookies=self.session.cookies)
+
+        # Default to a string if we get none
+        if self.catpets is None:
+            self.catpets = "an unknown number of"
+        else:
+            self.catpets = self.catpets['pets']
+
+        # Get a random kaomoji
+        self.cat_kaomoji = choice(self.cat_kaomoji_list)
+
+
+    def draw(self):
+        # Update lines and cols
+        curses.update_lines_cols()
+        # Get available space
+        rows, cols = curses.initscr().getmaxyx()
+        cols -= 1
+        # Centre the number of catpets
+        cat_pets_text = f"The cat has been petted {self.catpets} times!"
+        # Add some decoration
+        cat_pets_text = f"ੈ♡‧₊˚{cat_pets_text} ೄྀ࿐ˊˎ-\n"
+        cat_pets_offset = 0.5 * (cols - round(len(cat_pets_text)))
+        # Make sure we don't go below 0
+        cat_pets_offset = max(0, round(cat_pets_offset))
+        # Print the catpets with padding
+        self.stdscr.addstr(f"\n{' ' * cat_pets_offset} {cat_pets_text}", self.colours.GREEN_BLACK | curses.A_BLINK)
+
+        # Centre the kaomoji
+        centre_x = round((cols - max(len(line) for line in self.cat_kaomoji.split("\n"))) / 2)
+        centre_y = round((rows - len(self.cat_kaomoji.split("\n"))) / 2)
+        # Format the kaomoji by padding with spaces
+        kaomoji_print = "\n".join([f"{' ' * centre_x}{line}" for line in self.cat_kaomoji.split("\n")])
+        # Print the kaomoji
+        self.stdscr.addstr(centre_y, 0, kaomoji_print, self.colours.YELLOW_BLACK)
+
+        # Inherit the draw function
+        super().draw()
