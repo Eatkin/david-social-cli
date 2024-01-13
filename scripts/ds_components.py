@@ -374,8 +374,15 @@ class Feed():
     def update(self):
         """Update the feed"""
         # Query the api
-        # I did a load of dumb shit here but actually this is all I really need to do lol
-        self.posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
+        new_posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
+        # We need to loop through the new posts until we hit a post that is already in the feed
+        for post in new_posts:
+            if post not in self.posts:
+                # Add the post to the feed if it isn't a David selection
+                if not post["david_selection"]:
+                    self.posts = [post] + self.posts
+                    # Also increment the post index - if we preserve the post index then we can keep the user in the same place
+                    self.post_index += 1
 
     def load_more_posts(self):
         """Load more posts
