@@ -34,6 +34,16 @@ class FeedType(Enum):
     BOOTLICKER = 0
     GLOBAL = 1
 
+# For notifications
+class NotificationType(Enum):
+    LIKE = 0
+    REPLY = 1
+    MENTION = 2
+    FOLLOW = 3
+    UNKNOWN = 4 # No category
+    UPDATES = 5 # Thread update
+    EVENT_UPDATE = 6 # Special event update
+
 # Constants for text entry
 class TextEntryType(Enum):
     NEW_POST = 0
