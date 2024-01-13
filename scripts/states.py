@@ -14,12 +14,13 @@ from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
 # TODO: Add a confirmation for the text entry class, or error message if it fails, or prompt if message is blank
+# TODO: ^ A timer and a self.message variable would be sufficient for this
+# TODO: Truncate posts that are too long because the API doesn't check for anything over than 240 characters
 # TODO: Check notifications
 # TODO: View profile
 # TODO: Bootlick user if we aren't already bootlicking them
 # TODO: Delete post if it is our post (probably rly annoying to do)
 # TODO: Search users?
-# TODO: Some of the kaomoji doesn't display properly, try triple quotes maybe
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
@@ -882,7 +883,7 @@ class StateTextEntry(State):
             # Curses says enter is 343, but it's actually 10 apparently
             elif key == curses.KEY_ENTER or key == 10 or key == 13:
                 # Check if we have any text
-                if self.text_entry != "":
+                if self.text_entry.strip() != "":
                     self.callback = self.submit
                     break
             elif key == curses.KEY_BACKSPACE:
