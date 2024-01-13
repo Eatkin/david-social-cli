@@ -13,9 +13,6 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Add a confirmation for the text entry class, or error message if it fails, or prompt if message is blank
-# TODO: ^ A timer and a self.message variable would be sufficient for this
-# TODO: Truncate posts that are too long because the API doesn't check for anything over than 240 characters
 # TODO: Check notifications
 # TODO: View profile
 # TODO: Bootlick user if we aren't already bootlicking them
@@ -264,7 +261,7 @@ class StateExit(State):
 
     def draw(self):
         """Draw the state"""
-        self.stdscr.addstr("Goodbye!\n")
+        self.stdscr.addstr("Thanks for using David Social!\n")
 
         super().draw()
 
@@ -783,6 +780,12 @@ class StateTextEntry(State):
 
         self.type = type
 
+        # For displaying feedback upon submission of a post or failure to submit
+        self.feedback_message = ""
+        self.feedback_type = None       # "Error" or "Success" (determines the colour)
+        self.countdown_max = 3
+        self.countdown = self.countdown_max
+        self.time = datetime.now()
 
         # Create a blank menu (we won't need one)
         self.menu = Menu(stdscr, [], [])
@@ -839,8 +842,25 @@ class StateTextEntry(State):
             self.logger.error(f"Error submitting post: {e}")
             return self.regress_state()
 
-    # TODO: Feedback if submitted post is blank
-    # TODO: Trying to blank more than one row causes flickering, just blank the row we're on because that's the only one that will chagne
+    def draw_feedback(self):
+        """Draws feedback to the user"""
+        if self.feedback_message != "":
+            col = self.colours.GREEN_BLACK if self.feedback_type == "Success" else self.colours.RED_BLACK
+            self.stdscr.addstr(f"\n{self.feedback_message}", col)
+
+            # Countdown the timer
+            # Yes we do this in the draw function because update() method isn't called during text entry loop
+            dt = datetime.now() - self.time
+            self.countdown -= dt.total_seconds()
+            self.time = datetime.now()
+
+            # Blank the row
+            if self.countdown <= 0:
+                y, _ = curses.initscr().getyx()
+                self.blank_row(y)
+                # Set message to blank
+                self.feedback_message = ""
+
     def draw(self):
         """Draw the state"""
         # Draw the prompt centred
@@ -882,10 +902,27 @@ class StateTextEntry(State):
             # If we press enter then we want to submit
             # Curses says enter is 343, but it's actually 10 apparently
             elif key == curses.KEY_ENTER or key == 10 or key == 13:
-                # Check if we have any text
-                if self.text_entry.strip() != "":
-                    self.callback = self.submit
-                    break
+                max_post_length = 240
+                # Strip whitespace from the text entry
+                self.text_entry = self.text_entry.strip()
+                # We deliver feedback in all cases
+                self.countdown = self.countdown_max
+                # Reset time for countdown
+                self.time = datetime.now()
+                # Check if we have any text (text consisting only of whitespace also invalid)
+                if self.text_entry != "":
+                    # Check if the text is too long
+                    if len(self.text_entry) > max_post_length:
+                        self.feedback_message = f"Your submission is too long! Maximum length is {max_post_length} characters. Yours is {len(self.text_entry)} characters."
+                        self.feedback_type = "Error"
+                    else:
+                        self.feedback_message = "Submitting..."
+                        self.feedback_type = "Success"
+                        self.callback = self.submit
+                        break
+                else:
+                    self.feedback_message = "You can't submit nothing!"
+                    self.feedback_type = "Error"
             elif key == curses.KEY_BACKSPACE:
                 if len(self.text_entry) > 0:
                     self.text_entry = self.text_entry[:-1]
@@ -901,6 +938,14 @@ class StateTextEntry(State):
             box_centre = round(0.5 * (cols - len(self.text_entry)))
             box_centre = max(0, box_centre)
             self.stdscr.addstr(y, box_centre, f"{self.text_entry}", self.colours.YELLOW_BLACK)
+
+            # Feedback
+            self.draw_feedback()
+
+        # Feedback (needed outside the loop)
+        self.draw_feedback()
+
+
 
         # Inherit the draw function
         # Actually don't because there is no menu to draw
