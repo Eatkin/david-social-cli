@@ -13,11 +13,14 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
+# TODO: Updating a feed by posting a message re-indexes the feed which may be undesirable
+# TODO: Depends whether we want to retain a user's place in the feed or not
+# TODO: At the moment I don't, maybe add a constant to toggle this behaviour so I can change my mind later
 # TODO: Check notifications
 # TODO: View profile
 # TODO: Bootlick user if we aren't already bootlicking them
-# TODO: Delete post if it is our post (probably rly annoying to do)
-# TODO: Search users?
+# TODO: Search users for stalking
+# TODO: Make a readme.md file
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
@@ -280,6 +283,8 @@ class StateFeed(State):
         self.logger = logger
 
         self.callback = callback
+        # Jank ass way of regressing if feed is empty
+        self.regress = False
 
         # Used for either post ID or username
         self.additional_params = additional_params
@@ -329,6 +334,19 @@ class StateFeed(State):
         # Now update the menu
         self.update_menu()
 
+    def update(self):
+        if self.regress:
+            # Set the callback to update_post
+            par_state = state_history[-1]
+            if par_state.__class__.__name__ == "StateFeed":
+                callback = par_state.update_post
+            else:
+                callback = None
+            self.regress = False
+            return self.regress_state(callback)
+
+        return super().update()
+
     def setup_menu_functions(self):
         """Defines functions used by the menu"""
         self.next_post_func = {
@@ -367,6 +385,11 @@ class StateFeed(State):
             'function': self.advance_state,
             'state': StateTextEntry,
             'args': (self.stdscr, self.session, self.logger, TextEntryType.REPLY, self.current_post['id'], f"@{self.current_post['username']} {self.current_post['content']}")
+        }
+        self.delete_post = {
+            'type': 'function',
+            'function': self.delete_post,
+            'args': []
         }
 
     def update_menu_functions(self):
@@ -430,6 +453,10 @@ class StateFeed(State):
 
         # Add a reply option indiscriminately
         self.menu.update_menu("Reply", self.reply_to_post_func, self.menu.get_num_items())
+
+        # If it is our own post we can delete it
+        if self.current_post['username'].lower() == self.username.lower():
+            self.menu.update_menu("Delete", self.delete_post, self.menu.get_num_items())
 
         # Now finally add the back option
         self.menu.update_menu("Back", self.back_func, self.menu.get_num_items())
@@ -510,11 +537,26 @@ class StateFeed(State):
 
     def update_post(self):
         """Updates the current post"""
-        self.logger.info(f"Updating post {self.current_post['id']}")
-        self.current_post = self.feed.update_post(self.feed.post_index)
-        # Update the menu too
-        self.update_menu()
+        try:
+            self.logger.info(f"Updating post {self.current_post['id']}")
+            self.current_post = self.feed.update_post(self.feed.post_index)
+            # Update the menu too
+            self.update_menu()
+        except Exception as e:
+            self.logger.exception("Failed to update post")
+            self.logger.exception("Regressing state to previous state instead")
+            self.logger.exception(e)
+            # Regress the state
+            self.regress = True
         return None
+
+    def delete_post(self):
+        """Call API to delete the post and remove from the feed"""
+        response = david_api.query_api("delete-post", [self.current_post['id']], self.session.cookies)
+
+        if response is not None:
+            self.feed.delete_post(self.feed.post_index)
+            self.update_post()
 
     def view_image(self):
         """View the attached image"""

@@ -353,6 +353,14 @@ class Feed():
 
         return post
 
+    def delete_post(self, index):
+        """Remove a post from the feed"""
+        # Remove the post from the feed
+        del self.posts[index]
+        # Post index remains the same, but we need to reduce window by 1 if we're on bootlicker feed
+        if self.type == "Bootlicker":
+            self.params[0] -= 1
+
     def get_post_id(self, index):
         """Get the post id from the feed"""
         return self.posts[index]["id"]
@@ -387,6 +395,8 @@ class Feed():
     def load_more_posts(self):
         """Load more posts
         Returns: True if more posts were loaded, False if there are no more posts"""
+        # This will cause problems if more than 50 posts have been posted to Bootlicker feed since the user last loaded it
+        # I'm going to use the ostrich method and ignore this problem
         if self.type == "Bootlicker":
             self.params[0] += 50
         elif self.type == "Global":
