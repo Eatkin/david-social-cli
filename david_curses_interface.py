@@ -4,15 +4,11 @@ import atexit
 import curses
 from curses import wrapper
 from datetime import datetime
-from math import floor
 from time import sleep
 import scripts.env_utils as eu
 import scripts.api_routes as david_api
 import scripts.string_utils as su
-from scripts.feed_utils import print_feed
-from scripts.ds_components import Menu, Ticker, AsciiImage
-from scripts.colours import ColourConstants
-from scripts.states import State, StateMain, StateTextEntry
+from scripts.states import StateMain
 
 # TODO: Why does pressing escape pause everything?
 
@@ -50,7 +46,20 @@ atexit.register(cleanup)
 
 def login():
     username, password = eu.parse_secrets()
+    if username is None or password is None:
+        stdscr.addstr("Username or password not found\n")
+        stdscr.addstr("Credentials may be provided as environment variables (DAVID_USERNAME, DAVID_PASSWORD)\n")
+        stdscr.addstr("Alternatively you can fill in secret.YAML\n")
+        sleep(5)
+        exit(1)
+
     session = david_api.query_api("login", [username, password])
+
+    if session is None:
+        stdscr.addstr("Login failed\n")
+        stdscr.addstr("Check your username and password\n")
+        sleep(3)
+        exit(1)
     return session
 
 def main(stdscr):

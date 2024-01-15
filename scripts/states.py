@@ -30,10 +30,7 @@ import scripts.env_utils as eu
 # --------------------------------------------------------------------------------
 # Misc todo
 # --------------------------------------------------------------------------------
-# TODO: Clear out old files and entrypoint
-# TODO: When user has no credentials file, prompt them to create one - it does prompt them but the program instantly closes and nobody see it
-# TODO: This info can be in readme
-# TODO: direnv is a pain in the ass and doesn't work on UwUntu
+# TODO: Decrease refresh rate because flickering - also add info to readme, make it a constant
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 

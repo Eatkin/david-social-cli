@@ -2,5 +2,5 @@ beautifulsoup4
 rich
 requests
 Pillow
-direnv
 windows-curses
+pyyaml
