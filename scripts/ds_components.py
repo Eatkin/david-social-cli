@@ -313,6 +313,9 @@ class Feed():
         elif self.type == "Reply":
             self.api_route = "replies"
             self.params = [additional_params]
+        elif self.type == "Notifications":
+            self.api_route = "my-notifications"
+            self.params = []
 
         # Query the api
         # The window is a parameter which we can hold on to if we wish to load more posts
@@ -401,7 +404,7 @@ class Feed():
             self.params[0] += 50
         elif self.type == "Global":
             self.params[0] += 1
-        elif self.type == "User" or self.type == "Reply":
+        elif self.type == "User" or self.type == "Reply" or self.type == "Notifications":
             return False
 
         # Query the api with the new window size

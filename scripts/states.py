@@ -2,6 +2,7 @@ import curses
 import os
 import requests
 import csv
+import re
 from random import choice
 from math import floor
 from io import BytesIO
@@ -13,14 +14,17 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
+# TODO: Add cursor to text entry state (turn off upon state cleanup)
 # TODO: Updating a feed by posting a message re-indexes the feed which may be undesirable
 # TODO: Depends whether we want to retain a user's place in the feed or not
 # TODO: At the moment I don't, maybe add a constant to toggle this behaviour so I can change my mind later
-# TODO: Check notifications
-# TODO: View profile
-# TODO: Bootlick user if we aren't already bootlicking them
+# TODO: Check notifications - subclass of the feedclass
+# TODO: View profile - this will be a new class but just draws some profile details, from which we can view avatar, posts and bootlick the user if we aren't already
+# TODO: ^ Most of this is just in parsing the json response from the api to draw it nicely, also menuing
+# TODO: ^ Create a profile object
 # TODO: Search users for stalking
 # TODO: Make a readme.md file
+# TODO: try except for loading kaomoji - just add a default cat if it isn't found
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
@@ -33,6 +37,7 @@ feeds = {}
 class FeedType(Enum):
     BOOTLICKER = 0
     GLOBAL = 1
+    NOTIFICATIONS = 2
 
 # For notifications
 class NotificationType(Enum):
@@ -141,7 +146,7 @@ class StateMain(State):
         self.david_ascii = None
 
         # Initialise the menu
-        menu_items = ["Bootlicker Feed", "Global Feed", "Pet the Cat", "New Post", "Update Ticker", "Exit", ]
+        menu_items = ["Bootlicker Feed", "Global Feed", "View Notifications", "New Post", "Pet the Cat", "Update Ticker", "Exit", ]
         menu_states = [
                 {
                     'type': 'state_change',
@@ -158,7 +163,7 @@ class StateMain(State):
                 {
                     'type': 'state_change',
                     'function': self.advance_state,
-                    'state': StatePetCat,
+                    'state': StateNotifications,
                     'args': (self.stdscr, self.session, self.logger)
                 },
                 {
@@ -166,6 +171,12 @@ class StateMain(State):
                     'function': self.advance_state,
                     'state': StateTextEntry,
                     'args': (self.stdscr, self.session, self.logger, TextEntryType.NEW_POST, 0)
+                },
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StatePetCat,
+                    'args': (self.stdscr, self.session, self.logger)
                 },
                 {
                     'type': 'state_change',
@@ -311,7 +322,14 @@ class StateFeed(State):
 
         # Set up the feed
         self.feed_type = feed_type
-        self.feed_key = FeedType.BOOTLICKER if self.feed_type == "Bootlicker" else FeedType.GLOBAL if self.feed_type == "Global" else self.parent
+        if self.feed_type == "Bootlicker":
+            self.feed_key = FeedType.BOOTLICKER
+        elif self.feed_type == "Global":
+            self.feed_key = FeedType.GLOBAL
+        elif self.feed_type == "Notifications":
+            self.feed_key = FeedType.NOTIFICATIONS
+        else:
+            self.feed_key = self.parent
 
         # This will cache the feed object so we don't have to keep making requests unnecessarily
         if self.feed_key in feeds:
@@ -1010,3 +1028,218 @@ class StateTextEntry(State):
         self.stdscr.nodelay(False)
         # Inherit the cleanup function
         super().cleanup()
+
+# WIP
+# TODO: Menu selection isn't preserved
+# TODO: Going back fucks everything up
+# TODO: Loading a new feed by viewing notification fucks everything up
+class StateNotifications(StateFeed):
+    def __init__(self, stdscr, session, logger):
+        """Initialise the state"""
+        # Substate of StateFeed
+        # Notification stream is just a feed with different components to the usual post feed
+        super().__init__(stdscr, session, logger, "Notifications")
+
+        # Initialise colours
+        self.colours = ColourConstants()
+        self.colours.init_colours()
+
+        # We need to advance state when viewing a notification
+        self.advance = None
+
+    def update(self):
+        super().update()
+
+        # We can save a state to self.advance to correctly advance state
+        if self.advance is not None:
+            return self.advance_state(self.advance)
+
+    def setup_menu_functions(self):
+        """Defines functions used by the menu"""
+        # We only inherit the next/prev post functions
+        # Can't inherit all because it relies on keys that the notifications feed doesn't have
+        self.next_post_func = {
+            'type': 'function',
+            'function': self.next_post,
+            'args': []
+        }
+        self.prev_post_func = {
+            'type': 'function',
+            'function': self.previous_post,
+            'args': []
+        }
+        self.back_func = {
+            'type': 'function',
+            'function': self.regress_state,
+            'args': []
+        }
+        # Add an additional function to view the notification
+        self.view_notification = {
+            'type': 'function',
+            'function': self.view_notification,
+            'args': []
+        }
+
+    def view_notification(self):
+        """View the notification by redirecting to the relevant post/reply"""
+        # Get the context ID from the notification
+        # The url is of the form /thread/id(?highlight=id) second part optional
+        # Note that url may be blank
+        if self.current_post['url'] == "":
+            return None
+
+        full_context = self.current_post['url'].split('/')[-1]
+        thread_id = full_context.split('?')[0]
+        try:
+            highlight_id = full_context.split('?')[1].split('=')[1]
+        except:
+            highlight_id = None
+
+        # If this is the case we're linking to a reply thread
+        if highlight_id is not None:
+            # So we'll advance state to the reply thread
+            self.advance = StateFeed(self.stdscr, self.session, self.logger, "Reply", thread_id, thread_id, highlight_id)
+        else:
+            # Otherwise we're linking to a post
+            # So we'll advance state to the post
+            self.advance = StateFeed(self.stdscr, self.session, self.logger, "Post", thread_id, thread_id)
+
+    def post_is_liked(self):
+        """Just here to make sure the parent function doesn't fuck up"""
+        return False
+
+    def update_menu_functions(self):
+        """Update any menu functions that need updating"""
+        # We override the parent function because nothing needs updating
+        pass
+
+    def update_menu(self):
+        """Updates the menu"""
+        # We override the parent function because most of the functions are different
+        menu_items = self.menu.get_items()
+        pointer_pos = self.menu.selection
+        self.menu.clear_menu()
+        self.update_menu_functions()
+
+        # Now fill in menu options
+        # Need next/prev, view notification, back:
+        if self.feed.post_index != 0:
+            self.menu.update_menu("Previous Post", self.prev_post_func, self.menu.get_num_items())
+
+        # If we are not on the last post of the feed then append with "Next post"
+        if self.feed.post_index != len(self.feed.posts) - 1:
+            self.menu.update_menu("Next Post", self.next_post_func, self.menu.get_num_items())
+
+        if self.current_post['url'] != "":
+            self.menu.update_menu("View Notification", self.view_notification, self.menu.get_num_items())
+        self.menu.update_menu("Back", self.back_func, self.menu.get_num_items())
+        pass
+
+    def draw_post(self):
+        """Draw the current notification"""
+        # This is misleadingly named because we inherit the parent draw function
+        # The parent function calls draw_post which is why we need to override it
+        notification_type = self.current_post['type']
+        # Convert to int to equate with enums
+        notification_type = int(notification_type)
+        if notification_type == NotificationType.LIKE.value:
+            self.draw_liked_post()
+        elif notification_type == NotificationType.REPLY.value:
+            self.draw_replied()
+        elif notification_type == NotificationType.MENTION.value:
+            self.draw_mention()
+        elif notification_type == NotificationType.FOLLOW.value:
+            self.draw_follow()
+        elif notification_type == NotificationType.UPDATES.value:
+            self.draw_post_update()
+        else:
+            self.draw_misc()
+        pass
+
+    def draw_liked_post(self):
+        """Draws the 'liked post' notification"""
+        likers = self.current_post['actor'].split(';')
+        text = ""
+        if len(likers) == 1:
+            text = f"@{likers[0]} liked your post"
+        else:
+            text = f"@{likers[-1]} and {len(likers) - 1} others liked your post"
+
+        # Output the text
+        self.stdscr.addstr(text + "\n", self.colours.GREEN_BLACK)
+        # Now we have a snippet which shows the post content
+        snippet = self.current_post['snippet']
+        self.stdscr.addstr(snippet + "\n", curses.A_ITALIC)
+
+    def draw_post_update(self):
+        """Draws the 'post update' notification"""
+        updaters = self.current_post['actor'].split(';')
+        text = f"A post you are following has updates from {updaters[-1]}"
+        if len(updaters) > 1:
+            text += f" and {len(updaters) - 1} others"
+
+        # Output + snippet
+        self.stdscr.addstr(text + "\n", self.colours.GREEN_BLACK)
+        snippet = self.current_post['snippet']
+        self.stdscr.addstr(snippet + "\n", curses.A_ITALIC)
+
+    def draw_mention(self):
+        """Draws the 'mention' notification"""
+        mentioner = self.current_post['actor']
+        text = f"@{mentioner} mentioned you!"
+        snippet = self.current_post['snippet']
+
+        self.stdscr.addstr(text + "\n", self.colours.GREEN_BLACK)
+        self.stdscr.addstr(snippet + "\n", curses.A_ITALIC)
+
+    def draw_follow(self):
+        """Draws the 'follow' notification"""
+        follower = self.current_post['actor'].split(';')
+        text = f"@{follower[0]} is now following you!"
+
+        # I will assume if multiple people follow it gets joined into one notification
+        # But I don't know if that's true
+        if len(follower) > 1:
+            text += f"@{follower[0]} and {len(follower) - 1} others are now following you!"
+
+        self.stdscr.addstr(text + "\n", self.colours.GREEN_BLACK)
+        pass
+
+    def draw_replied(self):
+        """Draws the 'replied' notification"""
+        replier = self.current_post['actor']
+        text = f"@{replier} replied to your post"
+        snippet = self.current_post['snippet']
+
+        self.stdscr.addstr(text + "\n", self.colours.GREEN_BLACK)
+        self.stdscr.addstr(snippet + "\n", curses.A_ITALIC)
+
+    def draw_misc(self):
+        """Draws the 'misc' notification (unknown or event_update)"""
+        text = "Some unknown notification type"
+        snippet = self.current_post['snippet']
+
+        self.stdscr.addstr(text + "\n", self.colours.RED_BLACK)
+        self.stdscr.addstr(snippet + "\n", curses.A_ITALIC)
+        pass
+
+# WIP
+class StateProfile(State):
+    def __init__(self, stdscr, session, logger, username):
+        """Initialise the state"""
+        super().__init__()
+
+        self.stdscr = stdscr
+        self.session = session
+        self.logger = logger
+        self.username = username
+
+        # Create a blank menu
+        self.menu = Menu(self.stdscr, [], [])
+
+        # Initialise colours
+        self.colours = ColourConstants()
+        self.colours.init_colours()
+
+        # Get the user profile from the API
+        self.profile = david_api.query_api("get-user-profile", params=[self.username], cookies=self.session.cookies)
