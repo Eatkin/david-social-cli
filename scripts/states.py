@@ -986,6 +986,9 @@ class StateTextEntry(State):
         # Get the y position to draw at
         y = curses.initscr().getyx()[0]
 
+        # Set cursor to VERY VISIBLE for text entry
+        curses.curs_set(2)
+
         # Enter text gathering loop
         while self.callback is None:
             # Get updated available space
@@ -1040,8 +1043,15 @@ class StateTextEntry(State):
             box_centre = max(0, box_centre)
             self.stdscr.addstr(y, box_centre, f"{self.text_entry}", self.colours.YELLOW_BLACK)
 
+            # Put the cursor at the end of the text entry
+            self.stdscr.move(y, box_centre + len(self.text_entry))
+
             # Feedback
             self.draw_feedback()
+
+
+        # Turn off cursor
+        curses.curs_set(0)
 
         # Feedback (needed outside the loop)
         self.draw_feedback()
