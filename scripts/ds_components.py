@@ -316,10 +316,17 @@ class Feed():
         elif self.type == "Notifications":
             self.api_route = "my-notifications"
             self.params = []
+        elif self.type == "Post":
+            self.api_route = "get-post"
+            self.params = [additional_params]
 
         # Query the api
         # The window is a parameter which we can hold on to if we wish to load more posts
         self.posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
+
+        # Get-post route returns a single post so we need to put it in a list
+        if not isinstance(self.posts, list) and self.posts is not None:
+            self.posts = [self.posts]
 
         # Now we've got our feed let's see if there's anything in it
         # (Also handles failure to retrieve posts)
@@ -368,6 +375,13 @@ class Feed():
         """Get the post id from the feed"""
         return self.posts[index]["id"]
 
+    def get_post_index(self, id):
+        """Returns the index of a post with a given id"""
+        # Enforce typing otherwise we get issues with type mismatch
+        indices = [int(post["id"]) for post in self.posts]
+        id = int(id)
+        return indices.index(id) if id in indices else None
+
     def get_replies(self, index):
         """Get the replies to a post"""
         # Use the replies route
@@ -400,11 +414,12 @@ class Feed():
         Returns: True if more posts were loaded, False if there are no more posts"""
         # This will cause problems if more than 50 posts have been posted to Bootlicker feed since the user last loaded it
         # I'm going to use the ostrich method and ignore this problem
+        no_load = ["User", "Reply", "Notifications", "Post"]
         if self.type == "Bootlicker":
             self.params[0] += 50
         elif self.type == "Global":
             self.params[0] += 1
-        elif self.type == "User" or self.type == "Reply" or self.type == "Notifications":
+        elif self.type in no_load:
             return False
 
         # Query the api with the new window size

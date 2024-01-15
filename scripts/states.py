@@ -18,13 +18,11 @@ import scripts.env_utils as eu
 # TODO: Updating a feed by posting a message re-indexes the feed which may be undesirable
 # TODO: Depends whether we want to retain a user's place in the feed or not
 # TODO: At the moment I don't, maybe add a constant to toggle this behaviour so I can change my mind later
-# TODO: Check notifications - subclass of the feedclass
 # TODO: View profile - this will be a new class but just draws some profile details, from which we can view avatar, posts and bootlick the user if we aren't already
 # TODO: ^ Most of this is just in parsing the json response from the api to draw it nicely, also menuing
 # TODO: ^ Create a profile object
 # TODO: Search users for stalking
 # TODO: Make a readme.md file
-# TODO: try except for loading kaomoji - just add a default cat if it isn't found
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
@@ -322,23 +320,27 @@ class StateFeed(State):
 
         # Set up the feed
         self.feed_type = feed_type
-        if self.feed_type == "Bootlicker":
-            self.feed_key = FeedType.BOOTLICKER
-        elif self.feed_type == "Global":
-            self.feed_key = FeedType.GLOBAL
-        elif self.feed_type == "Notifications":
-            self.feed_key = FeedType.NOTIFICATIONS
-        else:
-            self.feed_key = self.parent
-
-        # This will cache the feed object so we don't have to keep making requests unnecessarily
-        if self.feed_key in feeds:
-            self.logger.info(f"Feed {self.feed_key} already exists, using cached feed")
-            self.feed = feeds[self.feed_key]
-        else:
+        # Do NOT cache post feed because it will interfere with cached reply feeds
+        if self.feed_type == "Post":
             self.feed = Feed(self.session, self.feed_type, self.additional_params)
-            # Add our feed to the feeds dictionary
-            feeds[self.feed_key] = self.feed
+        else:
+            if self.feed_type == "Bootlicker":
+                self.feed_key = FeedType.BOOTLICKER
+            elif self.feed_type == "Global":
+                self.feed_key = FeedType.GLOBAL
+            elif self.feed_type == "Notifications":
+                self.feed_key = FeedType.NOTIFICATIONS
+            else:
+                self.feed_key = self.parent
+
+            # This will cache the feed object so we don't have to keep making requests unnecessarily
+            if self.feed_key in feeds:
+                self.logger.info(f"Feed {self.feed_key} already exists, using cached feed")
+                self.feed = feeds[self.feed_key]
+            else:
+                self.feed = Feed(self.session, self.feed_type, self.additional_params)
+                # Add our feed to the feeds dictionary
+                feeds[self.feed_key] = self.feed
 
         self.menu = Menu(self.stdscr, [], [])
 
@@ -358,6 +360,14 @@ class StateFeed(State):
         # Some miscellaneous variables
         self.have_liked = self.post_is_liked()
         self.attached_image = ""
+
+        # If callback is an integer and this is a reply thread then we call jump to post with the callback as the post ID
+        # The id is parsed from json so it is a string
+        if isinstance(self.callback, str) and self.feed_type == "Reply":
+            self.logger.info(f"Jumping to post {self.callback}")
+            temp = self.jump_to_post(self.callback)
+            self.callback = None
+            self.logger.info(f"Jumped to post {self.current_post}")
 
         # Now update the menu
         self.update_menu()
@@ -511,6 +521,23 @@ class StateFeed(State):
                 # In which case it is easiest to move the pointer back one
                 # If we go below 0 set to 0
                 self.menu.selection = max(0, pointer_pos - 1)
+
+        return None
+
+    def jump_to_post(self, post_id):
+        """Moves the feed index to the post with the given ID"""
+        target_post_index = self.feed.get_post_index(post_id)
+        # If we can't find the given target then do nothing
+        if target_post_index is None:
+            return None
+
+        self.current_post = self.feed.get_post(target_post_index)
+        # Update feed post index too
+        self.feed.post_index = target_post_index
+
+        # Then update the menu and clear the attached image
+        self.update_menu()
+        self.attached_image = ""
 
         return None
 
@@ -739,10 +766,14 @@ class StatePetCat(State):
        # Load self.cat_kaomoji_list from assets/kaomoji.csv
         self.cat_kaomoji_list = []
 
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/kaomoji.csv"), "r") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                self.cat_kaomoji_list.append(row[0])
+        try:
+            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/kaomoji.csv"), "r") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    self.cat_kaomoji_list.append(row[0])
+        except:
+            # Defaults if loading fails
+            self.cat_kaomoji_list = ["(=^･ω･^=)", "(=^･ｪ･^=)",]
 
 
         self.pet_cat()
@@ -1029,10 +1060,13 @@ class StateTextEntry(State):
         # Inherit the cleanup function
         super().cleanup()
 
-# WIP
-# TODO: Menu selection isn't preserved
-# TODO: Going back fucks everything up
-# TODO: Loading a new feed by viewing notification fucks everything up
+# --------------------------------------------------------------------------------
+# OPTIONAL
+# --------------------------------------------------------------------------------
+# TODO: A reply should go to the reply thread, not the parent post, why doesn't it?
+# TODO: Actually this is David's fault because the API doesn't return the highlight ID for replies
+# TODO: SO we can do it but it requires getting the replies and then searching for a reply that begins with the snippet
+# TODO: SO let's not do that it is a silly thing to do
 class StateNotifications(StateFeed):
     def __init__(self, stdscr, session, logger):
         """Initialise the state"""
@@ -1043,16 +1077,6 @@ class StateNotifications(StateFeed):
         # Initialise colours
         self.colours = ColourConstants()
         self.colours.init_colours()
-
-        # We need to advance state when viewing a notification
-        self.advance = None
-
-    def update(self):
-        super().update()
-
-        # We can save a state to self.advance to correctly advance state
-        if self.advance is not None:
-            return self.advance_state(self.advance)
 
     def setup_menu_functions(self):
         """Defines functions used by the menu"""
@@ -1074,19 +1098,23 @@ class StateNotifications(StateFeed):
             'args': []
         }
         # Add an additional function to view the notification
-        self.view_notification = {
+        self.view_notification_func = {
             'type': 'function',
-            'function': self.view_notification,
+            'function': None,
             'args': []
         }
 
-    def view_notification(self):
+    def get_notification_target_state(self):
         """View the notification by redirecting to the relevant post/reply"""
         # Get the context ID from the notification
         # The url is of the form /thread/id(?highlight=id) second part optional
         # Note that url may be blank
         if self.current_post['url'] == "":
-            return None
+            # We go to the profile viewer state to view our new follower :D
+            if self.current_post['type'] == NotificationType.FOLLOW.value:
+                return StateProfile, (self.stdscr, self.session, self.logger, self.current_post['actor'].split(';')[0])
+            else:
+                return None
 
         full_context = self.current_post['url'].split('/')[-1]
         thread_id = full_context.split('?')[0]
@@ -1095,14 +1123,20 @@ class StateNotifications(StateFeed):
         except:
             highlight_id = None
 
+        # If highlight id is thread_id set it to none
+        # That way we link to the parent thread where necessary
+        if highlight_id == thread_id:
+            highlight_id = None
+
         # If this is the case we're linking to a reply thread
         if highlight_id is not None:
             # So we'll advance state to the reply thread
-            self.advance = StateFeed(self.stdscr, self.session, self.logger, "Reply", thread_id, thread_id, highlight_id)
+            # It provides a callback to jump to the post with the highlight id
+            return StateFeed, (self.stdscr, self.session, self.logger, "Reply", thread_id, thread_id, highlight_id)
         else:
             # Otherwise we're linking to a post
             # So we'll advance state to the post
-            self.advance = StateFeed(self.stdscr, self.session, self.logger, "Post", thread_id, thread_id)
+            return StateFeed, (self.stdscr, self.session, self.logger, "Post", thread_id)
 
     def post_is_liked(self):
         """Just here to make sure the parent function doesn't fuck up"""
@@ -1110,8 +1144,13 @@ class StateNotifications(StateFeed):
 
     def update_menu_functions(self):
         """Update any menu functions that need updating"""
-        # We override the parent function because nothing needs updating
-        pass
+        # We override the parent function and update the view_notification option
+        self.view_notification_func = {
+            'type': 'state_change',
+            'function': self.advance_state,
+            'state': self.get_notification_target_state()[0],
+            'args': self.get_notification_target_state()[1]
+        }
 
     def update_menu(self):
         """Updates the menu"""
@@ -1131,9 +1170,25 @@ class StateNotifications(StateFeed):
             self.menu.update_menu("Next Post", self.next_post_func, self.menu.get_num_items())
 
         if self.current_post['url'] != "":
-            self.menu.update_menu("View Notification", self.view_notification, self.menu.get_num_items())
+            self.menu.update_menu("View Notification", self.view_notification_func, self.menu.get_num_items())
         self.menu.update_menu("Back", self.back_func, self.menu.get_num_items())
-        pass
+
+        # Update pointer pos
+        if len(menu_items) == 0:
+            self.menu.selection = 0
+            return None
+
+        item_on = menu_items[pointer_pos]
+        new_items = self.menu.get_items()
+        if item_on in new_items:
+            self.menu.selection = new_items.index(item_on)
+        else:
+            if pointer_pos == len(menu_items) - 1:
+                self.menu.selection = self.menu.get_num_items() - 1
+            else:
+                self.menu.selection = max(0, pointer_pos - 1)
+
+        return None
 
     def draw_post(self):
         """Draw the current notification"""
