@@ -14,7 +14,6 @@ import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.env_utils as eu
 
-# TODO: Add cursor to text entry state (turn off upon state cleanup)
 # TODO: Updating a feed by posting a message re-indexes the feed which may be undesirable
 # TODO: Depends whether we want to retain a user's place in the feed or not
 # TODO: At the moment I don't, maybe add a constant to toggle this behaviour so I can change my mind later
@@ -23,6 +22,18 @@ import scripts.env_utils as eu
 # TODO: ^ Create a profile object
 # TODO: Search users for stalking
 # TODO: Make a readme.md file
+
+# TODO: Once the profile viewer si done you should be able to view profiles from the feed with a dedicated button
+# TODO: No API route for updating your own profile yet but we can view our own profile and feed from main menu
+# TODO: We should cache our bootlickers so when we view a profile we can look up the cached bootlickers and see if we are bootlicking them instead of making a request every time
+
+# --------------------------------------------------------------------------------
+# Misc todo
+# --------------------------------------------------------------------------------
+# TODO: Clear out old files and entrypoint
+# TODO: When user has no credentials file, prompt them to create one - it does prompt them but the program instantly closes and nobody see it
+# TODO: This info can be in readme
+# TODO: direnv is a pain in the ass and doesn't work on UwUntu
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 

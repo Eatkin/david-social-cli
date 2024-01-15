@@ -1,8 +1,6 @@
 import requests
 import json
 from bs4 import BeautifulSoup
-from scripts.console import console
-
 
 BASE_URL = "https://david-production.up.railway.app"
 
