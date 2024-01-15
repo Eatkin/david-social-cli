@@ -27,10 +27,13 @@ import scripts.env_utils as eu
 # TODO: No API route for updating your own profile yet but we can view our own profile and feed from main menu
 # TODO: We should cache our bootlickers so when we view a profile we can look up the cached bootlickers and see if we are bootlicking them instead of making a request every time
 
+# TODO: TEST YAML support for secrets and config
+
 # --------------------------------------------------------------------------------
 # Misc todo
 # --------------------------------------------------------------------------------
 # TODO: Decrease refresh rate because flickering - also add info to readme, make it a constant
+# TODO: Update makefile to be less crappy
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 

@@ -3,3 +3,4 @@ secrets.toml
 *.pyc
 .idea
 logs/
+secrets.yaml
