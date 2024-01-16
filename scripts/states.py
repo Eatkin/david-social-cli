@@ -14,14 +14,7 @@ from scripts.colours import ColourConstants
 import scripts.secrets as secrets
 import scripts.config as config
 
-# TODO: Search users for stalking
-# TODO: Make a readme.md file
-
-# --------------------------------------------------------------------------------
-# Misc todo
-# --------------------------------------------------------------------------------
-# TODO: Decrease refresh rate because flickering - also add info to readme, make it a constant
-# TODO: Update makefile to be less crappy
+# TODO: Search users for stalking (user-list endpoint)
 
 # --------------------------------------------------------------------------------
 # Constants
