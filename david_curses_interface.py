@@ -9,12 +9,17 @@ import scripts.secrets as secrets
 import scripts.config as config
 import scripts.api_routes as david_api
 from scripts.states import StateMain
+import scripts.config as config
 
 # Initialise curses
 stdscr = curses.initscr()
 curses.noecho()
 curses.cbreak()
 curses.start_color()
+
+# Get log clearing setting
+config_dict = config.read_config()
+clear_logs = config_dict['clear_logs']
 
 # Set up logging
 def logging_init():
@@ -36,7 +41,7 @@ def cleanup():
     curses.endwin()
 
     # Check if the logfile is empty
-    if os.stat(LOGFILE).st_size == 0:
+    if os.stat(LOGFILE).st_size == 0 or clear_logs:
         # If it is, delete it
         os.remove(LOGFILE)
 

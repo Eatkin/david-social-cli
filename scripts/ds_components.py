@@ -282,21 +282,6 @@ class AsciiImage():
         """Draw the ascii image"""
         self.stdscr.addstr(self.ascii)
 
-"""Notes on the feed class:
-response json structure is a list of dictionaries with keys:
-- id
-- username
-- content
-- likes
-- avi
-- attached_image
-- userid (None)
-- timestamp
-- reply_to
-- liked_by
-- ncomments
-- david_selection
-"""
 class Feed():
     def __init__(self, session, type="Bootlicker", additional_params=None):
         """Create feed, type can be Bootlicker or Global"""

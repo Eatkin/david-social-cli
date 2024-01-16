@@ -14,24 +14,14 @@ from scripts.colours import ColourConstants
 import scripts.secrets as secrets
 import scripts.config as config
 
-# TODO: View profile - this will be a new class but just draws some profile details, from which we can view avatar, posts and bootlick the user if we aren't already
-# TODO: ^ Most of this is just in parsing the json response from the api to draw it nicely, also menuing
-# TODO: ^ Create a profile object
 # TODO: Search users for stalking
 # TODO: Make a readme.md file
-
-# TODO: Once the profile viewer si done you should be able to view profiles from the feed with a dedicated button
-# TODO: No API route for updating your own profile yet but we can view our own profile and feed from main menu
-# TODO: We should cache our bootlickers so when we view a profile we can look up the cached bootlickers and see if we are bootlicking them instead of making a request every time
 
 # --------------------------------------------------------------------------------
 # Misc todo
 # --------------------------------------------------------------------------------
 # TODO: Decrease refresh rate because flickering - also add info to readme, make it a constant
 # TODO: Update makefile to be less crappy
-
-# OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
-
 
 # --------------------------------------------------------------------------------
 # Constants
@@ -43,8 +33,11 @@ feeds = {}
 state_history = []
 
 # Get whether to preserve feed position from config
-config = config.read_config()
-preserve_feed_position = config['preserve_feed_position']
+_config = config.read_config()
+preserve_feed_position = _config['preserve_feed_position']
+
+# Bootlicking cache so we don't have to make a request every time
+bootlicking_cache = None
 
 # Create special keywords for bootlicker and global feeds for use in the feeds dictionary
 # This is to ensure they are differentiated from user feeds
@@ -158,7 +151,7 @@ class StateMain(State):
         self.david_ascii = None
 
         # Initialise the menu
-        menu_items = ["Bootlicker Feed", "Global Feed", "View Notifications", "New Post", "Pet the Cat", "Update Ticker", "Exit", ]
+        menu_items = ["Bootlicker Feed", "Global Feed", "View Notifications", "New Post", "Pet the Cat", "Update Ticker", "View Profile", "Exit", ]
         menu_states = [
                 {
                     'type': 'state_change',
@@ -195,6 +188,12 @@ class StateMain(State):
                     'function': self.advance_state,
                     'state': StateTextEntry,
                     'args': (self.stdscr, self.session, self.logger, TextEntryType.TICKER_UPDATE, None)
+                },
+                {
+                    'type': 'state_change',
+                    'function': self.advance_state,
+                    'state': StateProfile,
+                    'args': (self.stdscr, self.session, self.logger, secrets.get_username())
                 },
                 {
                     'type': 'state_change',
@@ -344,6 +343,8 @@ class StateFeed(State):
                 self.feed_key = FeedType.GLOBAL
             elif self.feed_type == "Notifications":
                 self.feed_key = FeedType.NOTIFICATIONS
+            elif self.feed_type == "User":
+                self.feed_key = self.additional_params
             else:
                 self.feed_key = self.parent
 
@@ -517,8 +518,8 @@ class StateFeed(State):
         # If it is our own post we can delete it
         if self.current_post['username'].lower() == self.username.lower():
             self.menu.update_menu("Delete", self.delete_post_func, self.menu.get_num_items())
-        else:
-            # Otherwise we can view their profile
+        elif self.feed_type != "User":
+            # Otherwise we can view their profile (except don't add this if we are viewing a user's profile otherwise we can get really deep into viewing profiles from profiles)
             self.menu.update_menu("View Profile", self.view_profile_func, self.menu.get_num_items())
 
         # Now finally add the back option
@@ -1313,14 +1314,6 @@ class StateNotifications(StateFeed):
         self.stdscr.addstr(snippet + "\n", curses.A_ITALIC)
         pass
 
-# WIP
-"""
-Profile contents: Thinking about (create a ticker object)
-name, bio, facts (dictionary)
-avi (url),
-
-Options: View bootlickers, view boolicking, view feed, view avatar, back
-"""
 class StateProfile(State):
     def __init__(self, stdscr, session, logger, username):
         """Initialise the state"""
@@ -1330,9 +1323,6 @@ class StateProfile(State):
         self.session = session
         self.logger = logger
         self.username = username
-
-        # Create a blank menu
-        self.menu = Menu(self.stdscr, [], [])
 
         # Initialise colours
         self.colours = ColourConstants()
@@ -1349,13 +1339,98 @@ class StateProfile(State):
         # Create an ascii art object from the profile's avi
         self.avi = None
 
+        our_username = secrets.get_username()
+        global bootlicking_cache
+        # Set up bootlickers if it's none
+        if bootlicking_cache is None:
+            # Make an API call to get whom we are bootlicking
+            params = [our_username]
+            response = david_api.query_api("bootlickers", params=params, cookies=self.session.cookies)
+            if response is None:
+                self.logger.error("bootlickers returned None")
+                bootlickers = []
+            else:
+                bootlickers = response
+                self.logger.info(f"Got {len(bootlickers)} bootlickers")
+
+            # Save to cache
+            bootlicking_cache = bootlickers
+
+        # Let's see if we are bootlicking this profile
+        self.bootlicking = self.username in bootlicking_cache
+
+        # See if this user is bootlicking us
+        self.bootlicker = False
+        if our_username.lower() in [bl.lower() for bl in self.profile_details['following']]:
+            self.bootlicker = True
+
+        # Setup menu
+        self.setup_menu_functions()
+        menu_items = ["View Feed", "View Avatar", "Bootlickers", "Bootlicking", "Back"]
+        menu_functions = [
+            self.view_feed_func,
+            self.view_avi_func,
+            self.view_bootlickers_func,
+            self.view_bootlicking_func,
+            self.back_func
+        ]
+        self.menu = Menu(self.stdscr, menu_items, menu_functions)
+
+
+    def setup_menu_functions(self):
+        """Defines functions used by the menu"""
+        # We only inherit the next/prev post functions
+        # Can't inherit all because it relies on keys that the notifications feed doesn't have
+        self.view_feed_func = {
+            'type': 'state_change',
+            'function': self.advance_state,
+            'state': StateFeed,
+            'args': (self.stdscr, self.session, self.logger, "User", self.username)
+        }
+        self.view_avi_func = {
+            'type': 'function',
+            'function': self.view_image,
+            'args': []
+        }
+        self.back_func = {
+            'type': 'function',
+            'function': self.regress_state,
+            'args': []
+        }
+        self.bootlickers_func = {
+            'type': 'function',
+            'function': self.bootlick,
+            'args': []
+        }
+        self.view_bootlicking_func = {
+            'type': 'state_change',
+            'function': self.advance_state,
+            'state': StateTextViewer,
+            'args': (self.stdscr, self.session, self.logger, f"@{self.username} is bootlicking {len(self.profile_details['following'])} people\n{', '.join(self.profile_details['following'])}")
+        }
+        self.view_bootlickers_func = {
+            'type': 'state_change',
+            'function': self.advance_state,
+            'state': StateTextViewer,
+            'args': (self.stdscr, self.session, self.logger, f"@{self.username} is being bootlicked by {len(self.profile_details['bootlickers'])} people\n{', '.join(self.profile_details['bootlickers'])}")
+        }
+
+    def bootlick(self):
+        """Bootlick the profile"""
+        # There isn't a bootlick API endpoint so we can't do this
+        return None
+
+    def view_image(self):
+        """View the image with PIL"""
+        img = Image.open(BytesIO(requests.get(self.profile_details['avi']).content))
+        img.show()
 
     def update(self):
         """Update the state"""
         # Update the ticker
         self.ticker.update()
         # Inherit the update function
-        super().update()
+        return super().update()
 
     def update_ascii(self):
         """Update the ascii art"""
@@ -1370,6 +1445,12 @@ class StateProfile(State):
     def draw_profile(self):
         """Draw profile details"""
         self.stdscr.addstr(f"@{self.username}\n", self.colours.GREEN_BLACK)
+        if self.bootlicking:
+            self.stdscr.addstr("You are licking this user's boots ( ͡° ͜ʖ ͡°)\n", self.colours.YELLOW_BLACK)
+        if self.bootlicker:
+            self.stdscr.addstr("This user is licking your boots ( ͡~ ͜ʖ ͡°)\n", self.colours.YELLOW_BLACK)
+        self.stdscr.addstr(f"Bootlickers: {len(self.profile_details['bootlickers'])}\n")
+        self.stdscr.addstr(f"Bootlicking: {len(self.profile_details['following'])}\n")
         self.stdscr.addstr(f"Name: {self.profile_details['name']}\n")
         if self.profile_details['bio'] != "":
             self.stdscr.addstr(f"Bio: {self.profile_details['bio']}\n")
@@ -1383,11 +1464,45 @@ class StateProfile(State):
         """Draw the state"""
         # Draw the ticker
         self.ticker.draw()
+        self.stdscr.addstr("\n")
         # Draw the profile
         self.draw_profile()
         # Update avi here so we know our available space
         self.update_ascii()
         # Draw the avi
         self.avi.draw()
+        # Inherit the draw function
+        super().draw()
+
+class StateTextViewer(State):
+    def __init__(self, stdscr, session, logger, text):
+        """Initialise the state"""
+        super().__init__()
+
+        self.stdscr = stdscr
+        self.session = session
+        self.logger = logger
+
+        self.text = text
+
+        # Initialise colours
+        self.colours = ColourConstants()
+        self.colours.init_colours()
+
+        # Create a menu with a back button
+        menu_items = ["Back"]
+        menu_functions = [
+            {
+                'type': 'function',
+                'function': self.regress_state,
+                'args': []
+            }
+        ]
+        self.menu = Menu(self.stdscr, menu_items, menu_functions)
+
+    def draw(self):
+        """Draw the state"""
+        # Draw the text
+        self.stdscr.addstr(self.text + "\n")
         # Inherit the draw function
         super().draw()
