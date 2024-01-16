@@ -29,7 +29,7 @@ It uses the David Social API and allows you to read posts from your friends, lik
 ### Login
 1. Run the CLI with `python david.py`
 2. Login credentials can either be provided through environment variables (DAVID_USERNAME and DAVID_PASSWORD) or by filling in `secrets.yaml`. YAML files will be created if they do not exist.
-3. You may hardcode your credentials in `[scripts/secrets.py](https://github.com/Eatkin/david-social-cli/blob/master/scripts/secrets.py)` which is probably very insecure.
+3. You may hardcode your credentials in [scripts/secrets.py](https://github.com/Eatkin/david-social-cli/blob/master/scripts/secrets.py) which is probably very insecure.
 4. If you do not have a David Social account, you can sign up by asking David to make you an account.
 
 ### Configuration
