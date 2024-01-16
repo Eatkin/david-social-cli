@@ -2,22 +2,18 @@ import curses
 import os
 import requests
 import csv
-import re
 from random import choice
 from math import floor
 from io import BytesIO
 from PIL import Image
 from enum import Enum
 from datetime import datetime
-from scripts.ds_components import Menu, Ticker, AsciiImage, Feed
+from scripts.ds_components import Menu, Ticker, AsciiImage, Feed, Profile
 import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
 import scripts.secrets as secrets
+import scripts.config as config
 
-# TODO: Updating a feed by posting a message re-indexes the feed which may be undesirable
-# TODO: Depends whether we want to retain a user's place in the feed or not
-# TODO: At the moment I don't, maybe add a constant to toggle this behaviour so I can change my mind later
-# TODO: ^ Yeah I added this as an option in the config.yaml file
 # TODO: View profile - this will be a new class but just draws some profile details, from which we can view avatar, posts and bootlick the user if we aren't already
 # TODO: ^ Most of this is just in parsing the json response from the api to draw it nicely, also menuing
 # TODO: ^ Create a profile object
@@ -36,8 +32,19 @@ import scripts.secrets as secrets
 
 # OPTIONAL TODO: Create an object for menu functions instead of using dictionaries
 
-# We need to create a feeds dictionary to store the feed objects so we can save our place in them
+
+# --------------------------------------------------------------------------------
+# Constants
+# --------------------------------------------------------------------------------
+# Cache for feeds
 feeds = {}
+
+# State history for regressing to a previous state
+state_history = []
+
+# Get whether to preserve feed position from config
+config = config.read_config()
+preserve_feed_position = config['preserve_feed_position']
 
 # Create special keywords for bootlicker and global feeds for use in the feeds dictionary
 # This is to ensure they are differentiated from user feeds
@@ -62,9 +69,6 @@ class TextEntryType(Enum):
     NEW_POST = 0
     REPLY = 1
     TICKER_UPDATE = 2
-
-# State history for regressing to a previous state
-state_history = []
 
 class State():
     def __init__(self):
@@ -433,9 +437,15 @@ class StateFeed(State):
             'state': StateTextEntry,
             'args': (self.stdscr, self.session, self.logger, TextEntryType.REPLY, self.current_post['id'], f"@{self.current_post['username']} {self.current_post['content']}")
         }
-        self.delete_post = {
+        self.delete_post_func = {
             'type': 'function',
             'function': self.delete_post,
+            'args': []
+        }
+        self.view_profile_func = {
+            'type': 'state_change',
+            'function': self.advance_state,
+            'state': StateProfile,
             'args': []
         }
 
@@ -448,6 +458,9 @@ class StateFeed(State):
 
         # Update the view replies function to view the replies to the current post
         self.view_replies_func['args'] = (self.stdscr, self.session, self.logger, "Reply", self.current_post['id'], self.current_post['id'])
+
+        # Update view_profile function to include username argument
+        self.view_profile_func['args'] = (self.stdscr, self.session, self.logger, self.current_post['username'])
 
         # If we're in a reply thread we add a callback to update the post to the back function
         # Check the class name because it keeps trying to add a callback to StateMain which doesn't have an update_post function so it crashes
@@ -503,7 +516,10 @@ class StateFeed(State):
 
         # If it is our own post we can delete it
         if self.current_post['username'].lower() == self.username.lower():
-            self.menu.update_menu("Delete", self.delete_post, self.menu.get_num_items())
+            self.menu.update_menu("Delete", self.delete_post_func, self.menu.get_num_items())
+        else:
+            # Otherwise we can view their profile
+            self.menu.update_menu("View Profile", self.view_profile_func, self.menu.get_num_items())
 
         # Now finally add the back option
         self.menu.update_menu("Back", self.back_func, self.menu.get_num_items())
@@ -757,9 +773,9 @@ class StateFeed(State):
 
     def cleanup(self):
         """Cleanup the state"""
-        # We keep the feed but reset it's index to 0
-        # This MIGHT be annoying and I might remove it
-        self.feed.post_index = 0
+        # Reset the feed index if desired
+        if not preserve_feed_position:
+            self.feed.post_index = 0
         # Call the parent cleanup function
         super().cleanup()
 
@@ -928,9 +944,9 @@ class StateTextEntry(State):
             # If we are posting a new message and bootlicker/global feeds are in the feeds dictionary then we need to update them
             if self.type == TextEntryType.NEW_POST:
                 if FeedType.BOOTLICKER in feeds:
-                    feeds[FeedType.BOOTLICKER].update()
+                    feeds[FeedType.BOOTLICKER].update(preserve_feed_position)
                 if FeedType.GLOBAL in feeds:
-                    feeds[FeedType.GLOBAL].update()
+                    feeds[FeedType.GLOBAL].update(preserve_feed_position)
 
             # Regress state
             par_state = state_history[-1]
@@ -941,7 +957,7 @@ class StateTextEntry(State):
                 self.callback_args = [par_state.update_post]
                 # We also want to update the reply thread
                 try:
-                    feeds[self.params[0]].update()
+                    feeds[self.params[0]].update(preserve_feed_position)
                 except Exception as e:
                     # This sometimes throws a key error I think
                     # It doesn't really matter cause everything seems to work properly with the try/except
@@ -1298,6 +1314,13 @@ class StateNotifications(StateFeed):
         pass
 
 # WIP
+"""
+Profile contents: Thinking about (create a ticker object)
+name, bio, facts (dictionary)
+avi (url),
+
+Options: View bootlickers, view boolicking, view feed, view avatar, back
+"""
 class StateProfile(State):
     def __init__(self, stdscr, session, logger, username):
         """Initialise the state"""
@@ -1315,5 +1338,56 @@ class StateProfile(State):
         self.colours = ColourConstants()
         self.colours.init_colours()
 
-        # Get the user profile from the API
-        self.profile = david_api.query_api("get-user-profile", params=[self.username], cookies=self.session.cookies)
+        # Create a profile object
+        self.profile = Profile(self.session, self.username)
+        # Returns a dictionary
+        self.profile_details = self.profile.get_profile()
+
+        # Create a ticker object from the profile's status
+        self.ticker = Ticker(self.stdscr, self.profile_details['status'])
+
+        # Create an ascii art object from the profile's avi
+        self.avi = None
+
+
+    def update(self):
+        """Update the state"""
+        # Update the ticker
+        self.ticker.update()
+        # Inherit the update function
+        super().update()
+
+    def update_ascii(self):
+        """Update the ascii art"""
+        if self.avi is None:
+            self.avi = AsciiImage(self.stdscr, self.profile_details['avi'], url=True, centre=True, dim_adjust=(0, self.menu.get_rows() + 1))
+            return
+
+        # Update the avi with new dims
+        self.avi.set_dim_adjust((0, self.menu.get_rows() + 1))
+        self.avi.update()
+
+    def draw_profile(self):
+        """Draw profile details"""
+        self.stdscr.addstr(f"@{self.username}\n", self.colours.GREEN_BLACK)
+        self.stdscr.addstr(f"Name: {self.profile_details['name']}\n")
+        if self.profile_details['bio'] != "":
+            self.stdscr.addstr(f"Bio: {self.profile_details['bio']}\n")
+        # Now loop through facts key value pairs
+        for key, value in self.profile_details['facts'].items():
+            self.stdscr.addstr(f"{key}", self.colours.YELLOW_BLACK)
+            self.stdscr.addstr(": ")
+            self.stdscr.addstr(f"{value}\n", self.colours.GREEN_BLACK | curses.A_ITALIC)
+
+    def draw(self):
+        """Draw the state"""
+        # Draw the ticker
+        self.ticker.draw()
+        # Draw the profile
+        self.draw_profile()
+        # Update avi here so we know our available space
+        self.update_ascii()
+        # Draw the avi
+        self.avi.draw()
+        # Inherit the draw function
+        super().draw()

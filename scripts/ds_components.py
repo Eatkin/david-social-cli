@@ -155,16 +155,17 @@ class Menu():
 
 class Ticker():
     """Ticker class"""
-    def __init__(self, stdscr):
+    def __init__(self, stdscr, text=None):
         # Initialise the colour constants
         self.colours = ColourConstants()
         self.colours.init_colours()
         _, width = curses.initscr().getmaxyx()
         self.stdscr = stdscr
         # Get the ticker, we default to None
-        self.text = None
-        self.text = ""
-        self.get_ticker()
+        # This allows us to override and make a custom marquee
+        self.text = text
+        if text is None:
+            self.get_ticker()
         self.ticker_x = 0
         self.ticker_spacing = max(round(width * 0.2), 2)
         self.t = datetime.now()
@@ -188,6 +189,8 @@ class Ticker():
     def update(self):
         """Updates the ticker text"""
         _, width = curses.initscr().getmaxyx()
+        # Overflow protection
+        width -= 1
         # Update spacing basedd on Terminal width
         self.ticker_spacing = max(round(width * 0.2), 2)
 
@@ -396,7 +399,7 @@ class Feed():
         """Get the image from a post"""
         return self.posts[index]["attached_image"]
 
-    def update(self):
+    def update(self, presrve_pos):
         """Update the feed"""
         # Query the api
         new_posts = david_api.query_api(self.api_route, params=self.params, cookies=self.session.cookies)
@@ -407,7 +410,8 @@ class Feed():
                 if not post["david_selection"]:
                     self.posts = [post] + self.posts
                     # Also increment the post index - if we preserve the post index then we can keep the user in the same place
-                    self.post_index += 1
+                    if presrve_pos:
+                        self.post_index += 1
 
     def load_more_posts(self):
         """Load more posts
@@ -451,3 +455,35 @@ class Feed():
         # Now we can append the new posts to the old posts
         self.posts += new_posts
         return True
+
+class Profile():
+    def __init__(self, session, username):
+        """Create profile"""
+        self.session = session
+        self.username = username
+        self.profile = david_api.query_api("profile", params=[self.username], cookies=self.session.cookies)
+
+        # If the profile is None then we need to create a dummy profile
+        if self.profile is None:
+            self.profile = {
+                "username": self.username,
+                "name": "David",
+                "bio": "This user doesn't exist or this is a bug",
+                "facts": {},
+                "avi": "",
+                "bootlickers": [],
+                "following": [],
+                "posts": [],
+                "status": "This user doesn't exist or this is a bug",
+            }
+        else:
+            # Remove any dictionary keys from facts that are empty strings
+            self.profile["facts"] = {k: v for k, v in self.profile["facts"].items() if v != ""}
+            # No username key in profile so we need to add it
+            self.profile["username"] = self.username
+            # Bio may have default text which is "null", replace that with an empty string
+            self.profile["bio"] = self.profile["bio"].replace("null", "")
+
+    def get_profile(self):
+        """Return the profile"""
+        return self.profile
