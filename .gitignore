@@ -5,3 +5,7 @@ secrets.toml
 logs/
 secrets.yaml
 config.yaml
+build/
+david.spec
+dist.zip
+dist/
