@@ -8,8 +8,8 @@ This is a command line interface so you can use [David Social](https://www.david
 It uses the David Social API and allows you to read posts from your friends, like things, make new posts, pet cats and check out the profiles of your David Social crushes (i.e. everyone on David Social).
 
 ## Requirements
-* Built with Python 3.11.0
-* Required libraries are listed in requirements.txt
+* Built with `Python 3.11.0`
+* Required libraries are listed in `requirements.txt`
 * You will need a David Social account to use this CLI. You can sign up by asking David to make you an account.
 * (OPTIONAL) [Pyenv](https://github.com/pyenv/pyenv) for a virtual environment
 
@@ -29,7 +29,7 @@ It uses the David Social API and allows you to read posts from your friends, lik
 ### Login
 1. Run the CLI with `python david.py`
 2. Login credentials can either be provided through environment variables (DAVID_USERNAME and DAVID_PASSWORD) or by filling in `secrets.yaml`. YAML files will be created if they do not exist.
-3. You may hardcode your credentials in [scripts/secrets.py](https://github.com/Eatkin/david-social-cli/blob/master/scripts/secrets.py) which is probably very insecure.
+3. You may hardcode your credentials in `[scripts/secrets.py](https://github.com/Eatkin/david-social-cli/blob/master/scripts/secrets.py)` which is probably very insecure.
 4. If you do not have a David Social account, you can sign up by asking David to make you an account.
 
 ### Configuration
