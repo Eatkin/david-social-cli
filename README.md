@@ -1,4 +1,7 @@
 # David Social Command Line Interface
+
+![David Social CLI homepage](https://github.com/Eatkin/david-social-cli/blob/master/screens/david_home.png?raw=true)
+
 ## Description
 This is a command line interface so you can use [David Social](https://www.davidsocial.com) from your Terminal.
 
@@ -46,9 +49,23 @@ The CLI uses Curses to display the interface. You can use the arrow keys to navi
 
 ## Issues
 * Resizing the Terminal can cause the interface to break. If this happens, restart the CLI.
+* ASCII art may be covered by the menu if the menu spans more than one row
+* Viewing your own profile shows that you are both bootlicking and a bootlicker of yourself
 * If the interface does not respond or crashes, view the log files in the logs directory for more information. If you are unable to resolve the issue, please open an issue on this repository.
 
 ## Future Plans and Limitations
 * Add a way of searching the David Social userbase
 * You cannot follow (bootlick) users through the CLI
 * You cannot edit your profile through the CLI
+
+## Screenshots
+
+![View Profile](https://github.com/Eatkin/david-social-cli/blob/master/screens/profile.png?raw=true)
+
+![Feed viewer](https://github.com/Eatkin/david-social-cli/blob/master/screens/feed.png?raw=true)
+
+![Write posts to your friends](https://github.com/Eatkin/david-social-cli/blob/master/screens/newpost.png?raw=true)
+
+![Pet the David Social cat](https://github.com/Eatkin/david-social-cli/blob/master/screens/catpetting.png?raw=true)
+
+![Check your notifications](https://github.com/Eatkin/david-social-cli/blob/master/screens/notifications.png?raw=true)
