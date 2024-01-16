@@ -5,12 +5,10 @@ import curses
 from curses import wrapper
 from datetime import datetime
 from time import sleep
-import scripts.env_utils as eu
+import scripts.secrets as secrets
+import scripts.config as config
 import scripts.api_routes as david_api
-import scripts.string_utils as su
 from scripts.states import StateMain
-
-# TODO: Why does pressing escape pause everything?
 
 # Initialise curses
 stdscr = curses.initscr()
@@ -45,25 +43,42 @@ def cleanup():
 atexit.register(cleanup)
 
 def login():
-    username, password = eu.parse_secrets()
+    username, password = secrets.parse_secrets()
     if username is None or password is None:
+        stdscr.clear()
         stdscr.addstr("Username or password not found\n")
         stdscr.addstr("Credentials may be provided as environment variables (DAVID_USERNAME, DAVID_PASSWORD)\n")
         stdscr.addstr("Alternatively you can fill in secret.YAML\n")
-        sleep(5)
+        stdscr.refresh()
+        logging.error("Username or password not found")
+        logging.info("Credentials may be provided as environment variables (DAVID_USERNAME, DAVID_PASSWORD)")
+        logging.info("Alternatively you can fill in secret.YAML")
+        sleep(7)
         exit(1)
 
     session = david_api.query_api("login", [username, password])
 
     if session is None:
+        stdscr.clear()
         stdscr.addstr("Login failed\n")
         stdscr.addstr("Check your username and password\n")
-        sleep(3)
+        stdscr.addstr("They should be defined as environment variables (DAVID_USERNAME, DAVID_PASSWORD)\n")
+        stdscr.addstr("Alternatively you can fill in secret.YAML\n")
+        logging.error("Login failed")
+        logging.info("Check your username and password")
+        logging.info("They should be defined as environment variables (DAVID_USERNAME, DAVID_PASSWORD)")
+        logging.info("Alternatively you can fill in secret.YAML")
+        stdscr.refresh()
+        sleep(7)
         exit(1)
     return session
 
 def main(stdscr):
     """Main function"""
+    # Read config for refresh rate
+    config_dict = config.read_config()
+    refresh_rate = config_dict['refresh_rate']
+
     curses.curs_set(0)
     stdscr.clear()
     stdscr.addstr("Welcome to David Social!\n")
@@ -117,7 +132,7 @@ def main(stdscr):
         curses.doupdate()
 
         # Sleep interval seems to prevent flickering
-        sleep(0.1)
+        sleep(refresh_rate)
 
 
 wrapper(main)

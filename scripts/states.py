@@ -12,11 +12,12 @@ from datetime import datetime
 from scripts.ds_components import Menu, Ticker, AsciiImage, Feed
 import scripts.api_routes as david_api
 from scripts.colours import ColourConstants
-import scripts.env_utils as eu
+import scripts.secrets as secrets
 
 # TODO: Updating a feed by posting a message re-indexes the feed which may be undesirable
 # TODO: Depends whether we want to retain a user's place in the feed or not
 # TODO: At the moment I don't, maybe add a constant to toggle this behaviour so I can change my mind later
+# TODO: ^ Yeah I added this as an option in the config.yaml file
 # TODO: View profile - this will be a new class but just draws some profile details, from which we can view avatar, posts and bootlick the user if we aren't already
 # TODO: ^ Most of this is just in parsing the json response from the api to draw it nicely, also menuing
 # TODO: ^ Create a profile object
@@ -26,8 +27,6 @@ import scripts.env_utils as eu
 # TODO: Once the profile viewer si done you should be able to view profiles from the feed with a dedicated button
 # TODO: No API route for updating your own profile yet but we can view our own profile and feed from main menu
 # TODO: We should cache our bootlickers so when we view a profile we can look up the cached bootlickers and see if we are bootlicking them instead of making a request every time
-
-# TODO: TEST YAML support for secrets and config
 
 # --------------------------------------------------------------------------------
 # Misc todo
@@ -365,8 +364,7 @@ class StateFeed(State):
         self.colours.init_colours()
 
         # Get our username
-        self.username, _ = eu.parse_secrets()
-        del _
+        self.username = secrets.get_username()
 
         # Some miscellaneous variables
         self.have_liked = self.post_is_liked()

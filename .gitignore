@@ -4,3 +4,4 @@ secrets.toml
 .idea
 logs/
 secrets.yaml
+config.yaml

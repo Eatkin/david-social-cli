@@ -60,7 +60,6 @@ route_params = {
 
 def query_api(route, params=[], cookies=None, verbose=False):
     if route not in routes:
-        console.print(f"Error: {route} is not a valid route")
         return None
 
     params = {p_name: p for p_name, p in zip(route_params[route], params)}
@@ -68,9 +67,6 @@ def query_api(route, params=[], cookies=None, verbose=False):
     # Construct url
     url = BASE_URL + routes[route][1]
 
-    if verbose:
-        console.print(f"Making request to {url}", end="\n\r")
-        console.print(f"Params: {params}", end="\n\r")
 
     # Make the request
     response = routes[route][0](url, json=params, params=params, cookies=cookies)
@@ -92,7 +88,6 @@ def query_api(route, params=[], cookies=None, verbose=False):
 
         # Check if there IS data
         if json_data == "" or json_data is None:
-            console.print(f"Error: {route} returned no data")
             return None
 
         # Finally parse the json if applicable
@@ -101,5 +96,4 @@ def query_api(route, params=[], cookies=None, verbose=False):
         except:
             return json_data
     else:
-        console.print(f"Error: {response.status_code} {response.reason}")
         return None
