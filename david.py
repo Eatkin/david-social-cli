@@ -37,10 +37,10 @@ def logging_init():
 LOGFILE, LOGGER = logging_init()
 
 def cleanup():
-    """Cleanup curses and remove logfile if there are no logs"""
+    """Cleanup curses and remove logfile if empty or if logs should be cleared"""
     curses.endwin()
 
-    # Check if the logfile is empty
+    # Check if the logfile is empty or if logs should be cleared
     if os.stat(LOGFILE).st_size == 0 or clear_logs:
         # If it is, delete it
         os.remove(LOGFILE)
@@ -55,9 +55,6 @@ def login():
         stdscr.addstr("Credentials may be provided as environment variables (DAVID_USERNAME, DAVID_PASSWORD)\n")
         stdscr.addstr("Alternatively you can fill in secret.YAML\n")
         stdscr.refresh()
-        logging.error("Username or password not found")
-        logging.info("Credentials may be provided as environment variables (DAVID_USERNAME, DAVID_PASSWORD)")
-        logging.info("Alternatively you can fill in secret.YAML")
         sleep(7)
         exit(1)
 
@@ -70,9 +67,6 @@ def login():
         stdscr.addstr("They should be defined as environment variables (DAVID_USERNAME, DAVID_PASSWORD)\n")
         stdscr.addstr("Alternatively you can fill in secret.YAML\n")
         logging.error("Login failed")
-        logging.info("Check your username and password")
-        logging.info("They should be defined as environment variables (DAVID_USERNAME, DAVID_PASSWORD)")
-        logging.info("Alternatively you can fill in secret.YAML")
         stdscr.refresh()
         sleep(7)
         exit(1)

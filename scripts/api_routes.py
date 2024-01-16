@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 BASE_URL = "https://david-production.up.railway.app"
 
 # Define routes for the API
-# Uses environment variables to hide the routes
 routes = {
     'ping': (requests.get, '/api/ping'),
     'version': (requests.get, '/api/version'),
@@ -32,7 +31,6 @@ routes = {
 }
 
 # Lookup table for the parameters of each route
-# (Mostly just for my own reference)
 route_params = {
     'ping': [],
     'version': [],
