@@ -20,21 +20,28 @@ build_exe:
 
 clear_logs:
 	@echo "Clearing logs"
-	@rm -rf logs
+	@rm -rf logs | true
 
 clear_pycache:
 	@echo "Clearing pycache"
-	@rm -rf scripts/__pycache__
+	@rm -rf scripts/__pycache__ | true
 
 clear_all:
 	@echo "Clearing all"
 	@make clear_logs
 	@make clear_pycache
 	@make clear_executables
+	@make clear_credentials
 
 clear_executables:
 	@echo "Clearing executables"
-	@rm -rf base_library
-	@rm -rf *.spec
-	@rm -rf build
-	@rm -rf dist
+	@rm -rf base_library | true
+	@rm -rf *.spec | true
+	@rm -rf build | true
+	@rm -rf dist | true
+
+clear_credentials:
+	@echo "Clearing credentials"
+	@rm .david.cred | true
+	@rm .david.key | true
+	@rm secrets.yaml | true

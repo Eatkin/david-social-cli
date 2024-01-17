@@ -1438,13 +1438,16 @@ class StateProfile(State):
     def draw_profile(self):
         """Draw profile details"""
         self.stdscr.addstr(f"@{self.username}\n", self.colours.GREEN_BLACK)
-        if self.bootlicking:
-            self.stdscr.addstr("You are licking this user's boots ( ͡° ͜ʖ ͡°)\n", self.colours.YELLOW_BLACK)
-        if self.bootlicker:
-            self.stdscr.addstr("This user is licking your boots ( ͡~ ͜ʖ ͡°)\n", self.colours.YELLOW_BLACK)
+
+        # If our username is the same as the profile username then we are viewing our own profile so don't print this
+        if self.username != secrets.get_username():
+            if self.bootlicking:
+                self.stdscr.addstr("You are licking this user's boots ( ͡° ͜ʖ ͡°)\n", self.colours.YELLOW_BLACK)
+            if self.bootlicker:
+                self.stdscr.addstr("This user is licking your boots ( ͡~ ͜ʖ ͡°)\n", self.colours.YELLOW_BLACK)
+
         self.stdscr.addstr(f"Bootlickers: {len(self.profile_details['bootlickers'])}\n")
         self.stdscr.addstr(f"Bootlicking: {len(self.profile_details['following'])}\n")
-        self.stdscr.addstr(f"Name: {self.profile_details['name']}\n")
         if self.profile_details['bio'] != "":
             self.stdscr.addstr(f"Bio: {self.profile_details['bio']}\n")
         # Now loop through facts key value pairs

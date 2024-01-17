@@ -9,3 +9,6 @@ build/
 david.spec
 dist.zip
 dist/
+.david.cred
+.david.key
+username.txt

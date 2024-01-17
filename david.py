@@ -45,27 +45,100 @@ def cleanup():
         # If it is, delete it
         os.remove(LOGFILE)
 
+    # Clear cached username
+    try:
+        os.remove("username.txt")
+    except:
+        pass
+
 atexit.register(cleanup)
 
-def login():
-    username, password = secrets.parse_secrets()
-    if username is None or password is None:
+def get_credentials(overwrite=False):
+    curses.echo()
+    stdscr.clear()
+    if not overwrite:
+        stdscr.addstr("No credentials file found\n")
+
+    # Get user input
+    while True:
+        stdscr.addstr("Enter your username: ")
+        username = stdscr.getstr().decode()
+        stdscr.addstr("Enter your password: ")
+        password = stdscr.getstr().decode()
+        stdscr.addstr("Is this correct? (y/n): ")
+        confirm = stdscr.getstr().decode().lower()
+        if confirm == "y":
+            break
+        else:
+            stdscr.clear()
+            stdscr.refresh()
+
+    save_creds = False
+    # Ask if user wants to save credentials
+    while True:
         stdscr.clear()
-        stdscr.addstr("Username or password not found\n")
-        stdscr.addstr("Credentials may be provided as environment variables (DAVID_USERNAME, DAVID_PASSWORD)\n")
-        stdscr.addstr("Alternatively you can fill in secret.YAML\n")
-        stdscr.refresh()
-        sleep(7)
-        exit(1)
+        confirmation_message = "Do you want to save your credentials? (y/n): "
+        if overwrite:
+            confirmation_message = "Do you want to overwrite your credentials? (y/n): "
+        stdscr.addstr(confirmation_message)
+        confirm = stdscr.getstr().decode().lower()
+        logging.info(f"save_creds: {save_creds}")
+        if confirm == "y":
+            save_creds = True
+            break
+        elif confirm == "n":
+            break
+        else:
+            stdscr.clear()
+            stdscr.refresh()
+
+    curses.noecho()
+
+    if save_creds:
+        logging.info("Saving credentials")
+        secrets.write_secrets(username, password)
+    else:
+        logging.info("Not saving credentials")
+        logging.info("Caching username in file")
+        # Cache the username in a file
+        with open("username.txt", "w") as f:
+            f.write(username)
+
+    return username, password
+
+def login():
+    """Gets the user's credentials and logs them in"""
+    # Check if credentials are saved
+    username, password = secrets.parse_secrets()
+
+    # If not get them from input
+    if username is None or password is None:
+        username, password = get_credentials()
+    else:
+        # If they are we ask if they want to use saved credentials
+        while True:
+            curses.echo()
+            stdscr.clear()
+            stdscr.addstr("Do you want to use the saved credentials? (y/n): ")
+            confirm = stdscr.getstr().decode().lower()
+            if confirm == "y":
+                break
+            elif confirm == "n":
+                username, password = get_credentials(overwrite=True)
+                break
+            else:
+                stdscr.clear()
+                stdscr.refresh()
+
+        curses.noecho()
+
 
     session = david_api.query_api("login", [username, password])
 
     if session is None:
         stdscr.clear()
         stdscr.addstr("Login failed\n")
-        stdscr.addstr("Check your username and password\n")
-        stdscr.addstr("They should be defined as environment variables (DAVID_USERNAME, DAVID_PASSWORD)\n")
-        stdscr.addstr("Alternatively you can fill in secret.YAML\n")
+        secrets.clear_secrets()
         logging.error("Login failed")
         stdscr.refresh()
         sleep(7)

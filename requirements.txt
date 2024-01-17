@@ -4,3 +4,4 @@ requests
 Pillow
 windows-curses
 pyyaml
+cryptography

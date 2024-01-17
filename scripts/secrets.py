@@ -1,43 +1,68 @@
 import os
-import yaml
+from cryptography.fernet import Fernet
 import scripts.file_utils as fu
 
 base_dir = fu.get_root_dir()
-secrets_path = os.path.join(base_dir, 'secrets.yaml')
+key_path = os.path.join(base_dir, '.david.key')
+cred_path = os.path.join(base_dir, '.david.cred')
+username_cache = os.path.join(base_dir, 'username.txt')
 
-def write_secrets():
+def key_gen():
+    """Generate a key for encrypting credentials"""
+    key = Fernet.generate_key()
+    with open(key_path, 'wb') as f:
+        f.write(key)
+
+def get_key():
+    """Get the key for encrypting credentials"""
+    try:
+        with open(key_path, 'rb') as f:
+            key = f.read()
+        return key
+    except:
+        key_gen()
+        return get_key()
+
+def encrypt_credentials(credentials, key):
+    cipher_suite = Fernet(key)
+    encrypted_credentials = cipher_suite.encrypt(credentials.encode())
+    return encrypted_credentials
+
+def decrypt_credentials(encrypted_credentials, key):
+    cipher_suite = Fernet(key)
+    decrypted_credentials = cipher_suite.decrypt(encrypted_credentials).decode()
+    return decrypted_credentials
+
+def write_secrets(username, password):
     """Set up the secrets file"""
-    with open(secrets_path, 'w') as f:
-        yaml.safe_dump({'username': '', 'password': ''}, f)
+    key = get_key()
+    encrypted_credentials = encrypt_credentials(f"{username}:{password}", key)
+    with open(cred_path, 'wb') as f:
+        f.write(encrypted_credentials)
 
 def get_username():
-    """Get the username from environment variables or YAML"""
-    try:
-        username = os.environ['DAVID_USERNAME']
-    except:
-        try:
-            with open(secrets_path, 'r') as f:
-                secrets = yaml.load(f, Loader=yaml.FullLoader)
-                username = secrets['username']
-        except:
-            return None
+    """Get the username"""
+    username = parse_secrets()[0]
+    if username is not None:
+        return username
 
-    return username
+    try:
+        with open(username_cache, 'r') as f:
+            username = f.read()
+        return username
+    except:
+        return None
 
 
 def parse_secrets():
-    """Get the username and password from environment variables or YAML"""
+    """Get the username and password"""
     try:
-        username = os.environ['DAVID_USERNAME']
-        password = os.environ['DAVID_PASSWORD']
+        with open(cred_path, 'rb') as f:
+            encrypted_credentials = f.read()
+        key = get_key()
+        credentials = decrypt_credentials(encrypted_credentials, key)
+        username, password = credentials.split(":")
     except:
-        try:
-            with open(secrets_path, 'r') as f:
-                secrets = yaml.load(f, Loader=yaml.FullLoader)
-                username = secrets['username']
-                password = secrets['password']
-        except:
-            write_secrets()
-            return None, None
+        username, password = None, None
 
     return username, password
