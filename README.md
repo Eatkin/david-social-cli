@@ -28,7 +28,7 @@ It uses the David Social API and allows you to read posts from your friends, lik
 ## Usage
 ### Login
 1. Run the CLI with `python david.py`
-2. Login credentials can either be provided through environment variables (DAVID_USERNAME and DAVID_PASSWORD) or by filling in `secrets.yaml`. YAML files will be created if they do not exist.
+2. The interace will ask for credentials which you may choose to save
 3. You may hardcode your credentials in [scripts/secrets.py](https://github.com/Eatkin/david-social-cli/blob/master/scripts/secrets.py) which is probably very insecure.
 4. If you do not have a David Social account, you can sign up by asking David to make you an account.
 
@@ -50,7 +50,6 @@ The CLI uses Curses to display the interface. You can use the arrow keys to navi
 ## Issues
 * Resizing the Terminal can cause the interface to break, despite my best efforts. If this happens, restart the CLI.
 * ASCII art may be covered by the menu if the menu spans more than one row
-* Viewing your own profile shows that you are both bootlicking and a bootlicker of yourself
 * If the interface does not respond or crashes, view the log files in the logs directory for more information. If you are unable to resolve the issue, please open an issue on this repository.
 
 ## Future Plans and Limitations
