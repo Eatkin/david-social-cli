@@ -256,10 +256,20 @@ class StateMain(State):
         self.stdscr.addstr(" "*centre + welcome_message + "\n")
 
         # Call update ascii here because we know the available space
-        self.update_ascii()
+        try:
+            self.update_ascii()
+        except:
+            pass
 
         # Print the ascii
-        self.david_ascii.draw()
+        try:
+            self.david_ascii.draw()
+        except:
+            max_height, _ = curses.initscr().getmaxyx()
+            line_breaks = floor(max_height / 2)
+            h_offset = floor((max_width - len("¯\(°_o)/¯")) / 2)
+            default_david = "¯\(°_o)/¯"
+            self.stdscr.addstr("\n" * line_breaks + " " * h_offset + default_david + "\n")
 
         # Call the parent draw function
         super().draw()
