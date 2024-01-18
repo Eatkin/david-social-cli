@@ -98,6 +98,7 @@ def get_credentials(overwrite=False):
 
     if save_creds:
         logging.info("Saving credentials to ~/")
+        stdscr.addstr(f"saving credentials to ~/")
         secrets.write_secrets(username, password)
     else:
         logging.info("Not saving credentials")

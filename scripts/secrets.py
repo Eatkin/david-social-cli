@@ -38,7 +38,6 @@ def write_secrets(username, password):
     """Set up the secrets file"""
     key = get_key()
     encrypted_credentials = encrypt_credentials(f"{username}:{password}", key)
-    stdscr.addstr(f"saving credentials to: {cred_path}")
     with open(cred_path, 'wb') as f:
         f.write(encrypted_credentials)
 
