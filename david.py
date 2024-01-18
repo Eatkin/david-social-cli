@@ -1,3 +1,5 @@
+#!/usr/bin/env
+
 import os
 import logging
 import atexit
@@ -83,10 +85,10 @@ def get_credentials(overwrite=False):
         stdscr.addstr(confirmation_message)
         confirm = stdscr.getstr().decode().lower()
         logging.info(f"save_creds: {save_creds}")
-        if confirm == "y":
+        if confirm.lower() == "y":
             save_creds = True
             break
-        elif confirm == "n":
+        elif confirm.lower() == "n":
             break
         else:
             stdscr.clear()
@@ -95,7 +97,7 @@ def get_credentials(overwrite=False):
     curses.noecho()
 
     if save_creds:
-        logging.info("Saving credentials")
+        logging.info("Saving credentials to ~/")
         secrets.write_secrets(username, password)
     else:
         logging.info("Not saving credentials")

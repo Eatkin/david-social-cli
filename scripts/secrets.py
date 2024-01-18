@@ -3,8 +3,9 @@ from cryptography.fernet import Fernet
 import scripts.file_utils as fu
 
 base_dir = fu.get_root_dir()
-key_path = os.path.join(base_dir, '.david.key')
-cred_path = os.path.join(base_dir, '.david.cred')
+home_dir = fu.get_home_dir()
+key_path = os.path.join(home_dir, '.david.key')
+cred_path = os.path.join(home_dir, '.david.cred')
 username_cache = os.path.join(base_dir, 'username.txt')
 
 def key_gen():
@@ -37,6 +38,7 @@ def write_secrets(username, password):
     """Set up the secrets file"""
     key = get_key()
     encrypted_credentials = encrypt_credentials(f"{username}:{password}", key)
+    stdscr.addstr(f"saving credentials to: {cred_path}")
     with open(cred_path, 'wb') as f:
         f.write(encrypted_credentials)
 

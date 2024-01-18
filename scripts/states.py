@@ -647,6 +647,7 @@ class StateFeed(State):
         """Draw the current post"""
         curses.update_lines_cols()
         linebreak = "-" * (curses.COLS - 1) + "\n"
+        lite_line  = "." * (curses.COLS - 1) + "\n"
 
         # If this is a David Selection say so
         if self.current_post['david_selection']:
@@ -676,7 +677,7 @@ class StateFeed(State):
         body = self.current_post['content']
         if body.strip() != "":
             self.stdscr.addstr(f"{self.current_post['content']}\n")
-            self.stdscr.addstr(linebreak)
+            self.stdscr.addstr(lite_line)
 
         # Likes and comments
         likes = self.current_post['liked_by'].copy()
@@ -698,13 +699,13 @@ class StateFeed(State):
             self.stdscr.addstr("Liked by: ", self.colours.GREEN_BLACK)
             self.stdscr.addstr(likers + "\n")
         else:
-            likers = "Nobody, you should be the first! :3"
+            likers = "0 likes, you should be the first! :3"
             self.stdscr.addstr(likers + "\n")
 
         # Cleanup
         del likes
 
-        self.stdscr.addstr(linebreak)
+        self.stdscr.addstr(lite_line)
 
         # Commenters
         if self.current_post['ncomments'] > 0:
