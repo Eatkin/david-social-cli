@@ -18,8 +18,10 @@ It uses the David Social API and allows you to read posts from your friends, lik
 ### Linux Executable
 A pre-built executable is available for your executing pleasure.
 Instructions:
-1. `cp dist/david /usr/bin` (may require elevation)
-2. you can now run david with the david command `david`
+1. Download the latest release from [releases](https://github.com/Eatkin/david-social-cli/releases/). *Alternatively*, you can obtain the executable `david` from the dist folder of this repo.
+2. To install simply `cp david /usr/bin` (may require elevation)
+3. you can now run david with the david command `david`
+
 
 ### Windows and Mac Executables
 There is currently no standalone executable for Windows or Mac. Maybe there will be one day :)
