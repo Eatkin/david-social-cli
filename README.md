@@ -14,6 +14,16 @@ It uses the David Social API and allows you to read posts from your friends, lik
 * (OPTIONAL) [Pyenv](https://github.com/pyenv/pyenv) for a virtual environment
 
 ## Installation
+
+### Linux Executable
+A pre-built executable is available for your executing pleasure.
+Instructions:
+1. `cp dist/david /usr/bin` (may require elevation)
+2. you can now run david with the david command `david`
+
+### Windows and Mac Executables
+There is currently no standalone executable for Windows or Mac. Maybe there will be one day :)
+
 ### Using Make
 1. Clone this repository
 2. `make all` will setup a Pyenv virtual environment and install the required libraries

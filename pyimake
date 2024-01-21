@@ -1,0 +1,1 @@
+pyinstaller --onefile --add-data assets:assets david.py

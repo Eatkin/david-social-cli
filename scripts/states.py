@@ -797,7 +797,7 @@ class StatePetCat(State):
         self.cat_kaomoji_list = []
 
         try:
-            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/kaomoji.csv"), "r") as f:
+            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets/kaomoji.csv"), "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 for row in reader:
                     self.cat_kaomoji_list.append(row[0])

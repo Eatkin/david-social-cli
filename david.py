@@ -1,6 +1,7 @@
 #!/usr/bin/env
 
 import os
+import sys
 import logging
 import atexit
 import curses
@@ -12,6 +13,7 @@ import scripts.config as config
 import scripts.api_routes as david_api
 from scripts.states import StateMain
 import scripts.config as config
+import scripts.file_utils as utils
 
 # Initialise curses
 stdscr = curses.initscr()
@@ -27,11 +29,13 @@ clear_logs = config_dict['clear_logs']
 def logging_init():
     """Createss a logfile with the current date and time"""
     # Make a logs directory if it doesn't exist
-    if not os.path.exists("logs"):
-        os.mkdir("logs")
+    base_dir = f"{utils.get_home_dir()}/.david_logs"
+    if not os.path.exists(base_dir):
+        os.mkdir(base_dir)
     # Create a logfile with the current date and time
-    filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
-    logging.basicConfig(filename=filename, level=logging.DEBUG, encoding="utf-8")
+    log_level = logging.DEBUG if "--logs" in sys.argv else logging.CRITICAL        
+    filename = f"{base_dir}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+    logging.basicConfig(filename=filename, level=log_level, encoding="utf-8")
     print(f"Logging to {filename}")
     logger = logging.getLogger()
     return filename, logger
