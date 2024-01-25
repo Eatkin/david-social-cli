@@ -22,7 +22,7 @@ There is currently no standalone executable for Windows or Mac. Maybe there will
 
 ## Running From Source
 
-## Requirements
+### Requirements
 * Built with `Python 3.11.0`
 * Required libraries are listed in `requirements.txt`
 * You will need a David Social account to use this CLI. You can sign up by asking David to make you an account.
