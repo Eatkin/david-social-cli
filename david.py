@@ -33,7 +33,7 @@ def logging_init():
     if not os.path.exists(base_dir):
         os.mkdir(base_dir)
     # Create a logfile with the current date and time
-    log_level = logging.DEBUG if "--logs" in sys.argv else logging.CRITICAL        
+    log_level = logging.DEBUG if "--logs" in sys.argv else logging.CRITICAL
     filename = f"{base_dir}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
     logging.basicConfig(filename=filename, level=log_level, encoding="utf-8")
     print(f"Logging to {filename}")
@@ -125,7 +125,7 @@ def login():
         # If they are we ask if they want to use saved credentials
         while True:
             curses.echo()
-            stdscr.clear()
+            stdscr.move(0, 0)
             stdscr.addstr("Do you want to use the saved credentials? (y/n): ")
             confirm = stdscr.getstr().decode().lower()
             if confirm == "y":
@@ -143,7 +143,7 @@ def login():
     session = david_api.query_api("login", [username, password])
 
     if session is None:
-        stdscr.clear()
+        stdscr.move(0, 0)
         stdscr.addstr("Login failed\n")
         secrets.clear_secrets()
         logging.error("Login failed")
@@ -193,12 +193,13 @@ def main(stdscr):
             if new_state is not None:
                 state = new_state
                 logging.info(f"Changed state to {state}")
+                stdscr.clear()
         except Exception as e:
             logging.exception(e)
 
         # Draw the state
         # Curses always fails when drawing, so we need to catch the exception
-        stdscr.clear()
+        stdscr.move(0, 0)
         try:
             state.draw()
         except Exception as e:
@@ -211,7 +212,7 @@ def main(stdscr):
         curses.doupdate()
 
         # Sleep interval seems to prevent flickering
-        sleep(refresh_rate)
+        # sleep(refresh_rate)
 
 
 wrapper(main)
