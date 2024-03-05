@@ -7,12 +7,6 @@ This is a command line interface so you can use [David Social](https://www.david
 
 It uses the David Social API and allows you to read posts from your friends, like things, make new posts, pet cats and check out the profiles of your David Social crushes (i.e. everyone on David Social).
 
-## Requirements
-* Built with `Python 3.11.0`
-* Required libraries are listed in `requirements.txt`
-* You will need a David Social account to use this CLI. You can sign up by asking David to make you an account.
-* (OPTIONAL) [Pyenv](https://github.com/pyenv/pyenv) for a virtual environment
-
 ## Installation
 
 ### Linux Executable
@@ -25,6 +19,14 @@ Instructions:
 
 ### Windows and Mac Executables
 There is currently no standalone executable for Windows or Mac. Maybe there will be one day :)
+
+## Running From Source
+
+### Requirements
+* Built with `Python 3.11.0`
+* Required libraries are listed in `requirements.txt`
+* You will need a David Social account to use this CLI. You can sign up by asking David to make you an account.
+* (OPTIONAL) [Pyenv](https://github.com/pyenv/pyenv) for a virtual environment
 
 ### Using Make
 1. Clone this repository
