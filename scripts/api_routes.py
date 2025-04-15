@@ -17,7 +17,7 @@ routes = {
     'bootlicking': (requests.get, '/api/bootlicking'),
     'liked-by': (requests.get, '/api/liked-by'),
     'profile': (requests.get, '/api/profile'),
-    'get-ticker-text': (requests.get, '/get-ticker-text'),
+    'get-ticker-text': (requests.get, '/api/get-ticker-text'),
     'login': (requests.post, '/api/login'),
     'global-feed': (requests.post, '/api/global-feed'),
     'bootlicker-feed': (requests.post, '/api/bootlicker-feed'),
