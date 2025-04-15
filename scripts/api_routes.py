@@ -18,7 +18,7 @@ routes = {
     'liked-by': (requests.get, '/api/liked-by'),
     'profile': (requests.get, '/api/profile'),
     'get-ticker-text': (requests.get, '/get-ticker-text'),
-    'login': (requests.post, '/login'),
+    'login': (requests.post, '/api/login'),
     'global-feed': (requests.post, '/api/global-feed'),
     'bootlicker-feed': (requests.post, '/api/bootlicker-feed'),
     'new-post': (requests.post, '/api/new-post'),
